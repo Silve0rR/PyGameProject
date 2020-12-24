@@ -36,16 +36,18 @@ class Game:
         character_sprites.draw(self.screen)
         platform_sprites.draw(self.screen)
 
+        visual_board.render(self.screen)
+
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, group):
         super().__init__(group)
-        self.image = pygame.Surface((50, 100))
+        self.image = pygame.Surface((33, 58))
         self.image.fill('green')
         self.rect = self.image.get_rect()
         self.rect.center = WIDTH // 2, HEIGHT // 2
         self.fall = 5
-        self.jump = [False, -25]
+        self.jump, self.is_flight = [False, -25], False
 
     def update(self):
         keys = pygame.key.get_pressed()
@@ -53,10 +55,10 @@ class Player(pygame.sprite.Sprite):
             self.rect.x -= 6
         if keys[pygame.K_d] and self.rect.right < WIDTH - 5:
             self.rect.x += 6
-        if not self.jump[0]:
+        if not self.jump[0] and not self.is_flight:
             if keys[pygame.K_SPACE]:
                 self.jump[0] = True
-        else:
+        elif self.jump[0]:
             if self.jump[1] == 25:
                 self.jump = [False, -25]
             else:
@@ -78,8 +80,12 @@ class Player(pygame.sprite.Sprite):
             self.rect.bottom = HEIGHT - 11
         if y == self.rect.y and not self.jump[0]:
             self.fall += 1
+            self.is_flight = True
         else:
             self.fall = 5
+            self.is_flight = False
+        if self.jump[0]:
+            self.is_flight = True
 
     def collision(self):
         platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
@@ -102,17 +108,37 @@ class Player(pygame.sprite.Sprite):
 
 
 class Platform(pygame.sprite.Sprite):
-    def __init__(self, coords):
+    def __init__(self, coords_cell):
         super().__init__()
-        self.image = pygame.Surface((210, 20))
+        self.image = pygame.Surface((100, 20))
         self.image.fill('blue')
         self.rect = self.image.get_rect()
-        self.rect.center = coords
+        visual_board.set_values(coords_cell, 1)
+        self.rect.center = visual_board.get_coords(coords_cell)
+
+
+class VisualBoard:
+    def __init__(self):
+        self.width, self.height = WIDTH // 100 + 1, HEIGHT // 100
+        self.board = [[0] * self.width for _ in range(self.height)]
+
+    def render(self, screen):  # в игре не учавствует(служебная функция)
+        for y in range(self.height):
+            for x in range(self.width):
+                pygame.draw.rect(screen, 'white', (x * 100, y * 100, 100, 100), 1)
+
+    def set_values(self, coords_cell, value):
+        self.board[coords_cell[1]][coords_cell[0]] = value
+
+    def get_coords(self, coords_cell):
+        if self.board[coords_cell[1]][coords_cell[0]] == 1:
+            return [100 * coords_cell[0] + 50, 100 * coords_cell[1] + 70]
 
 
 if __name__ == '__main__':
+    visual_board = VisualBoard()
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     player = Player(character_sprites)
-    platform_sprites.add(Platform((570, 520)), Platform((350, 520)), Platform((950, 400)),
-                         Platform((570, 220)))
+    platform_sprites.add(Platform((5, 5)), Platform((4, 5)), Platform((3, 5)), Platform((8, 4)),
+                         Platform((6, 2)))
     game = Game()
