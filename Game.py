@@ -89,8 +89,7 @@ class Player(pygame.sprite.Sprite):
                     else:
                         self.rect.y += 1
                     if not self.collision():
-                        if self.jump[1] < 0:
-                            self.jump[1] = 24
+                        self.jump[1] = 24
                         break
                 self.jump[1] += 1
 
@@ -136,40 +135,40 @@ class Enemy(pygame.sprite.Sprite):
         self.image.fill('red')
         self.rect = self.image.get_rect()
         self.rect.center = WIDTH // 2, HEIGHT - 23
-        self.fall, self.speed = 5, random.randrange(3, 8)
+        self.fall, self.speed = 5, random.randrange(4, 7)
         self.jump, self.is_flight = [False, -25], False
         self.path, self.last_player_cell_coord = [], []
-        self.run = [0, 1, False]
+        self.run, self.timers = [0, 1, False], [30]
 
     def update(self):
         cell_player, cell_self = visual_board.get_coords(player.rect.center), visual_board.get_coords(self.rect.center)
-        if cell_player[1] >= cell_self[1]:
+        if cell_player[1] >= cell_self[1] and not self.jump[0]:
             if player.rect.right < self.rect.left and self.rect.left > 5:
                 self.rect.x -= self.speed
             if player.rect.left > self.rect.right and self.rect.right < WIDTH - 5:
                 self.rect.x += self.speed
         elif self.path:
-            print(self.path, '!!!', cell_self)
-            if self.path[0][0] > cell_self[0] and self.run[0] == 0:
-                self.run = [100, 1, False]
+            if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50:
+                self.run = [self.path[0][0] * 100 + 50, 1, False]
                 self.run[2] = self.path[0][2]
-            elif self.path[0][0] < cell_self[0] and self.run[0] == 0:
-                self.run = [100, -1, False]
+            elif self.path[0][0] < cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50:
+                self.run = [self.path[0][0] * 100 + 50, -1, False]
                 self.run[2] = self.path[0][2]
             elif self.run[0] > 0:
                 if self.run[2] and not self.jump[0]:
                     self.jump[0] = True
-                self.run[0] -= self.speed
-                if self.run[2] and self.run[0] > 80:
-                    if self.run[0] < 85:
-                        self.run[0] = 100
+                if self.run[2] and self.jump[1] <= -23:
+                    if self.jump[1] == -23:
                         self.run[2] = False
                 else:
-                    self.rect.x += self.speed * self.run[1]
-                if self.run[0] <= 0:
+                    if self.jump[0]:
+                        self.rect.x += 5 * self.run[1]
+                    else:
+                        self.rect.x += self.speed * self.run[1]
+                if (self.run[1] == 1 and self.run[0] <= self.rect.center[0]) or \
+                        (self.run[1] == -1 and self.run[0] >= self.rect.center[0]):
                     self.run[0] = 0
-                    del self.path[0]
-            elif self.run[0] == 0 and self.path[0][0] == cell_self[0] and self.path[0][1] == cell_self[1]:
+            elif self.run[0] == 0 and not self.jump[0]:
                 del self.path[0]
         if self.jump[0]:
             if self.jump[1] == 25:
@@ -181,8 +180,7 @@ class Enemy(pygame.sprite.Sprite):
                     else:
                         self.rect.y += 1
                     if not self.collision():
-                        if self.jump[1] < 0:
-                            self.jump[1] = 24
+                        self.jump[1] = 24
                         break
                 self.jump[1] += 1
 
@@ -200,9 +198,10 @@ class Enemy(pygame.sprite.Sprite):
             self.is_flight = False
         if self.jump[0]:
             self.is_flight = True
-        if self.last_player_cell_coord != cell_player:
-            self.last_player_cell_coord = cell_player
+        if self.last_player_cell_coord != cell_player or self.timers[0] == 0:
+            self.last_player_cell_coord, self.timers[0] = cell_player, 30
             self.finding_path_1(visual_board.board, cell_player, cell_self)
+        self.timers[0] -= 1
 
     def collision(self):
         platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
@@ -224,21 +223,20 @@ class Enemy(pygame.sprite.Sprite):
         return True
 
     def finding_path_1(self, board, cell_player, cell_self):
-        board2 = []
-        if not player.is_flight and not player.jump[0]:
+        if not player.is_flight and not player.jump[0] and not self.is_flight and not self.jump[0]:
+            board2 = []
             for i in range(visual_board.height):
                 board2.append([])
                 for j in range(visual_board.width):
                     if board[i][j] == 0:
-                        board2[i].append(-1)
+                        board2[i].append([-1, ''])
                     elif board[i][j] == 1:
-                        board2[i].append(0)
-            board2[-1] = [0 for _ in range(visual_board.width)]
-            board2[cell_self[1]][cell_self[0]] = 1
+                        board2[i].append([0, ''])
+            board2[-1] = [[0, ''] for _ in range(visual_board.width)]
+            board2[cell_self[1]][cell_self[0]] = [1, '1']
             sp = self.finding_path_2(board2, cell_player)
-            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', sp[0])
             if sp[0]:
-                self.save_path(sp[1], cell_player)
+                self.save_path(sp[1], cell_player, cell_self)
 
     def finding_path_2(self, board, cell_player):
         wave = 1
@@ -247,132 +245,71 @@ class Enemy(pygame.sprite.Sprite):
             wave += 1
             for y in range(visual_board.height):
                 for x in range(visual_board.width):
-                    if board[y][x] == wave - 1:
+                    option = '1'
+                    if board[y][x][0] == wave - 1:
                         if x + 1 < visual_board.width:
-                            if board[y][x + 1] == 0 or (board[y][x + 1] != -1 and board[y][x + 1] > wave):
-                                print('x')
-                                board[y][x + 1] = wave
+                            if board[y][x + 1][0] == 0 or (board[y][x + 1][0] != -1 and board[y][x + 1][0] > wave):
+                                board[y][x + 1] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
                         if x - 1 >= 0:
-                            if board[y][x - 1] == 0 or (board[y][x - 1] != -1 and board[y][x - 1] > wave):
-                                print('-x')
-                                board[y][x - 1] = wave
+                            if board[y][x - 1][0] == 0 or (board[y][x - 1][0] != -1 and board[y][x - 1][0] > wave):
+                                board[y][x - 1] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
                         if x + 1 < visual_board.width and y - 2 >= 0:
-                            if (board[y - 1][x + 1] == 0 or (board[y - 1][x + 1] != -1 and  # 1
-                                                             board[y - 1][x + 1] > wave)) and\
-                                    board[y - 1][x] == board[y - 2][x] == board[y - 2][x + 1] == -1:
-                                print(1, [x, y])
-                                board[y - 1][x + 1] = wave
-                            if (board[y - 2][x + 1] == 0 or (board[y - 2][x + 1] != -1 and  # 3
-                                                             board[y - 2][x + 1] > wave)) and y != 6 and \
-                                    board[y - 1][x] == board[y - 2][x] == -1:
-                                print(3, [x, y])
-                                board[y - 2][x + 1] = wave
+                            if (board[y - 1][x + 1][0] == 0 or (board[y - 1][x + 1][0] != -1 and  # 1
+                                                                board[y - 1][x + 1][0] > wave)) and\
+                                    board[y - 1][x][0] == board[y - 2][x][0] == board[y - 2][x + 1][0] == -1:
+                                board[y - 1][x + 1] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
+                            if (board[y - 2][x + 1][0] == 0 or (board[y - 2][x + 1][0] != -1 and  # 3
+                                                                board[y - 2][x + 1][0] > wave)) and y != 6 and \
+                                    board[y - 1][x][0] == board[y - 2][x][0] == -1:
+                                board[y - 2][x + 1] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
                         if x + 2 < visual_board.width and y - 2 >= 0:
-                            if (board[y - 1][x + 2] == 0 or (board[y - 1][x + 2] != -1 and  # 2
-                                                             board[y - 1][x + 2] > wave)) and\
-                                    board[y - 1][x] == board[y - 2][x] == -1 and\
-                                    board[y - 2][x + 1] == board[y - 2][x + 2] == -1:
-                                print(2, [x, y])
-                                board[y - 1][x + 2] = wave
-                            if (board[y - 2][x + 2] == 0 or (board[y - 2][x + 2] != -1 and
-                                                             board[y - 2][x + 2] > wave)) and y != 6 and \
-                                    board[y - 1][x] == board[y - 2][x] == board[y - 2][x + 1] == -1:
-                                if board[y - 2][x + 1] == -1:
-                                    print(4, [x, y])
-                                    board[y - 2][x + 2] = wave
+                            if (board[y - 1][x + 2][0] == 0 or (board[y - 1][x + 2][0] != -1 and  # 2
+                                                                board[y - 1][x + 2][0] > wave)) and\
+                                    board[y - 1][x][0] == board[y - 2][x][0] == -1 and\
+                                    board[y - 2][x + 1][0] == board[y - 2][x + 2][0] == -1:
+                                board[y - 1][x + 2] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
                         if x - 1 >= 0 and y - 2 >= 0:
-                            if (board[y - 1][x - 1] == 0 or (board[y - 1][x - 1] != -1 and  # 1
-                                                             board[y - 1][x - 1] > wave)) and\
-                                    board[y - 1][x] == board[y - 2][x] == board[y - 2][x - 1] == -1:
-                                print(1, [x, y])
-                                board[y - 1][x - 1] = wave
-                            if (board[y - 2][x - 1] == 0 or (board[y - 2][x - 1] != -1 and  # 3
-                                                             board[y - 2][x - 1] > wave)) and y != 6 and \
-                                    board[y - 1][x] == board[y - 2][x] == -1:
-                                print(3, [x, y])
-                                board[y - 2][x - 1] = wave
+                            if (board[y - 1][x - 1][0] == 0 or (board[y - 1][x - 1][0] != -1 and  # 1
+                                                                board[y - 1][x - 1][0] > wave)) and\
+                                    board[y - 1][x][0] == board[y - 2][x][0] == board[y - 2][x - 1][0] == -1:
+                                board[y - 1][x - 1] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
+                            if (board[y - 2][x - 1][0] == 0 or (board[y - 2][x - 1][0] != -1 and  # 3
+                                                                board[y - 2][x - 1][0] > wave)) and y != 6 and \
+                                    board[y - 1][x][0] == board[y - 2][x][0] == -1:
+                                board[y - 2][x - 1] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
                         if x - 2 >= 0 and y - 2 >= 0:
-                            if (board[y - 1][x - 2] == 0 or (board[y - 1][x - 2] != -1 and  # 2
-                                                             board[y - 1][x - 2] > wave)) and\
-                                    board[y - 1][x] == board[y - 2][x] == -1 and\
-                                    board[y - 2][x - 1] == board[y - 2][x - 2] == -1:
-                                print(2, [x, y])
-                                board[y - 1][x - 2] = wave
-                            if (board[y - 2][x - 2] == 0 or (board[y - 2][x - 2] != -1 and
-                                                             board[y - 2][x - 2] > wave)) and y != 6 and \
-                                    board[y - 1][x] == board[y - 2][x] == board[y - 2][x - 1] == -1:
-                                if board[y - 2][x - 1] == -1:
-                                    print(4, [x, y])
-                                    board[y - 2][x - 2] = wave
+                            if (board[y - 1][x - 2][0] == 0 or (board[y - 1][x - 2][0] != -1 and  # 2
+                                                                board[y - 1][x - 2][0] > wave)) and\
+                                    board[y - 1][x][0] == board[y - 2][x][0] == -1 and\
+                                    board[y - 2][x - 1][0] == board[y - 2][x - 2][0] == -1:
+                                board[y - 1][x - 2] = [wave, board[y][x][1] + option]
+                                option = str(int(option) + 1)
 
                         if y == cell_player[1] and x == cell_player[0]:
-                            board[cell_player[1]][cell_player[0]] = wave
+                            board[cell_player[1]][cell_player[0]] = [wave, board[y][x][1] + option]
                             return [True, board]
         return [False, []]
 
-    def save_path(self, board, cell_player):
-        y = cell_player[1]
-        x = cell_player[0]
-        wave = board[y][x]
-        print('Player:', [x, y])
-        while wave != 0:
+    def save_path(self, board, cell_player, cell_self):
+        wave, cod_cell = board[cell_player[1]][cell_player[0]][0], board[cell_player[1]][cell_player[0]][1]
+        self.path.append([*cell_player, False])
+        for ind in range(-1, -len(cod_cell), -1):
             wave -= 1
-            if x + 1 < visual_board.width and board[y][x + 1] == wave:
-                self.path.append([x + 1, y, False])
-                x += 1
-            elif x - 1 >= 0 and board[y][x - 1] == wave:
-                self.path.append([x - 1, y, False])
-                x -= 1
-            elif y + 1 < visual_board.height and board[y + 1][x + 1] == wave and\
-                    board[y][x + 1] == board[y - 1][x + 1] == board[y - 1][x] == -1:  # 1
-                self.path.append([x, y, True])
-                self.path.append([x + 1, y + 1, False])
-                x, y = x + 1, y + 1
-            elif y + 1 < visual_board.height and board[y + 1][x - 1] == wave and\
-                    board[y][x - 1] == board[y - 1][x - 1] == board[y - 1][x] == -1:  # 1
-                self.path.append([x, y, True])
-                self.path.append([x - 1, y + 1, False])
-                x, y = x - 1, y + 1
-            elif y + 1 < visual_board.height and board[y + 1][x + 2] == wave and\
-                    board[y][x + 2] == board[y - 1][x + 2] == board[y - 1][x + 1] == board[y - 1][x] == -1:  # 2
-                self.path.append([x, y, True])
-                self.path.append([x + 2, y + 1, False])
-                x, y = x + 2, y + 1
-            elif y + 1 < visual_board.height and board[y + 1][x - 2] == wave and\
-                    board[y][x - 2] == board[y - 1][x - 2] == board[y - 1][x - 1] == board[y - 1][x] == -1:  # 2
-                self.path.append([x, y, True])
-                self.path.append([x - 2, y + 1, False])
-                x, y = x - 2, y + 1
-            elif y + 2 < visual_board.height and board[y + 2][x + 1] == wave and\
-                    board[y + 1][x + 1] == board[y][x + 1] == -1:  # 3
-                self.path.append([x, y, True])
-                self.path.append([x + 1, y + 2, False])
-                x, y = x + 1, y + 2
-            elif y + 2 < visual_board.height and board[y + 2][x - 1] == wave and\
-                    board[y + 1][x - 1] == board[y][x - 1] == -1:  # 3
-                self.path.append([x, y, True])
-                self.path.append([x - 1, y + 2, False])
-                x, y = x - 1, y + 2
-            elif y + 2 < visual_board.height and board[y + 2][x + 2] == wave and\
-                    board[y + 1][x + 2] == board[y][x + 2] == board[y][x + 1] == -1:  # 4
-                self.path.append([x, y, True])
-                self.path.append([x + 2, y + 2, False])
-                x, y = x + 2, y + 2
-            elif y + 2 < visual_board.height and board[y + 2][x - 2] == wave and\
-                    board[y + 1][x - 2] == board[y][x - 2] == board[y][x - 1] == -1:  # 4
-                self.path.append([x, y, True])
-                self.path.append([x - 2, y + 2, False])
-                x, y = x - 2, y + 2
+            cod = cod_cell[:ind]
+            for y in range(visual_board.height):
+                for x in range(visual_board.width):
+                    if board[y][x] == [wave, cod] and [x, y] != cell_self:
+                        self.path.append([x, y, False])
+                        if self.path[-2][1] < y:
+                            self.path[-2][2] = True
         self.path = self.path[::-1]
-        print('!----------------------!')
-        for i in range(len(board)):
-            for j in range(len(board[0])):
-                if board[i][j] == -1:
-                    print(board[i][j], end=' ')
-                else:
-                    print(' ' + str(board[i][j]), end=' ')
-            print()
-        print('!----------------------!')
 
 
 class Platform(pygame.sprite.Sprite):
@@ -389,8 +326,9 @@ if __name__ == '__main__':
     visual_board = VisualBoard()
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     player = Player()
-    for _ in range(1):
+    for _ in range(4):
         Enemy()
     platform_sprites.add(Platform((2, 5)), Platform((3, 5)), Platform((4, 5)),
                          Platform((6, 4)), Platform((7, 4)), Platform((8, 2)))
     game = Game()
+
