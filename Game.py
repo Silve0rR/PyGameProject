@@ -52,15 +52,105 @@ class VisualBoard:
             for x in range(self.width):
                 pygame.draw.rect(screen, 'white', (x * 100, y * 100, 100, 100), 1)
 
-    def set_values(self, coords_cell, value):
-        self.board[coords_cell[1]][coords_cell[0]] = value
+    def set_values(self, coord_cell, value):
+        self.board[coord_cell[1]][coord_cell[0]] = value
 
-    def get_coords_platform(self, coords_cell):
-        if self.board[coords_cell[1]][coords_cell[0]] == 1:
-            return [100 * coords_cell[0] + 50, 100 * coords_cell[1] + 70]
+    def get_coord_platform(self, coord_cell):
+        if self.board[coord_cell[1]][coord_cell[0]] == 1:
+            return [100 * coord_cell[0] + 50, 100 * coord_cell[1] + 70]
 
-    def get_coords(self, coords):
-        return [coords[0] // 100, coords[1] // 100]
+    def get_coord(self, coord):
+        return [coord[0] // 100, coord[1] // 100]
+
+
+class Character(pygame.sprite.Sprite):
+    def __init__(self, im_stand, im_size_run, im_size_attack):
+        super().__init__(character_sprites)
+        self.image_stand = load_image(im_stand, (35, 90, 115))
+        self.image = self.image_stand
+        self.frames_sl, self.cur_frame = load_frames_sl((im_size_run, im_size_attack))
+        self.hp, self.rect = 1, self.image.get_rect()
+        self.jump, self.is_flight, self.fall, self.timers = [False, -25], False, 5, [0, 0]
+        self.attack = [False, False]
+
+    def update(self):
+        self.char_jump()
+        y = self.rect.y + self.fall  # Падение
+        for j in range(self.fall):
+            self.rect.y += 1
+            self.collision()
+            if self.rect.bottom > HEIGHT - 23:
+                self.rect.bottom = HEIGHT - 23
+        if y == self.rect.y and not self.jump[0]:
+            self.fall += 1
+            self.is_flight = True
+        else:
+            if self.fall > 10:
+                self.hp -= self.fall - 10
+            self.fall = 5
+            self.is_flight = False
+        if self.jump[0]:
+            self.is_flight = True
+
+    def collision(self):
+        platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
+        for pl in platforms:
+            if pl.rect.bottom > self.rect.bottom > pl.rect.top > self.rect.top:
+                self.rect.bottom = pl.rect.top
+                return False
+            elif pl.rect.top < self.rect.top < pl.rect.bottom < self.rect.bottom:
+                self.rect.top = pl.rect.bottom
+                return False
+            elif self.rect.top <= pl.rect.top or self.rect.bottom >= pl.rect.bottom:
+                if self.rect.right > pl.rect.left > self.rect.left:
+                    self.rect.right = pl.rect.left
+                elif self.rect.left < pl.rect.right < self.rect.right:
+                    self.rect.left = pl.rect.right
+                return True
+            else:
+                return True
+        return True
+
+    def char_jump(self):
+        if self.jump[0]:
+            if self.jump[1] == 25:
+                self.jump = [False, -25]
+            else:
+                for i in range(abs(self.jump[1])):
+                    if self.jump[1] < 0:
+                        self.rect.y -= 1
+                    else:
+                        self.rect.y += 1
+                    if not self.collision():
+                        self.jump[1] = 24
+                        break
+                self.jump[1] += 1
+
+    def animation(self, key, click_attack=True):
+        if key[:key.index('_')] == 'run':
+            if self.timers[0] == 3:
+                self.cur_frame[0] = (self.cur_frame[0] + 1) % len(self.frames_sl[key])
+                self.image = self.frames_sl[key][self.cur_frame[0]]
+                self.set_rect_mask()
+            self.timers[0] += 1
+            if self.timers[0] == 4:
+                self.timers[0] = 0
+        elif key[:key.index('_')] == 'attack':
+            if self.timers[1] == 10:
+                if not click_attack:
+                    self.cur_frame[1] = -1
+                else:
+                    self.cur_frame[1] = (self.cur_frame[1] + 1) % len(self.frames_sl[key])
+                self.image = self.frames_sl[key][self.cur_frame[1]]
+                self.set_rect_mask()
+            self.timers[1] += 1
+            if self.timers[1] == 11:
+                self.timers[1] = 0
+
+    def set_rect_mask(self):
+        center = self.rect.center
+        self.rect = self.image.get_rect()
+        self.rect.center = center
 
 
 class Player(pygame.sprite.Sprite):
@@ -69,8 +159,9 @@ class Player(pygame.sprite.Sprite):
         self.image = load_image('Player.png', (35, 90, 115))
         self.rect = self.image.get_rect()
         self.rect.center = WIDTH // 2, HEIGHT // 2
-        self.fall, self.hp, self.inwis = 5, 1000, 0
+        self.fall, self.hp = 5, 1000
         self.jump, self.is_flight = [False, -25], False
+        self.attack = [False, False]
 
     def update(self):
         keys = pygame.key.get_pressed()
@@ -109,13 +200,6 @@ class Player(pygame.sprite.Sprite):
             self.is_flight = False
         if self.jump[0]:
             self.is_flight = True
-        hits = pygame.sprite.spritecollide(self, character_sprites, False)
-        for chr in hits:
-            if chr != self and self.inwis < 10:
-                self.hp -= 10
-                self.inwis += 5
-        if self.inwis > 0:
-            self.inwis -= 1
 
     def collision(self):
         platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
@@ -137,39 +221,24 @@ class Player(pygame.sprite.Sprite):
         return True
 
 
-class Enemy(pygame.sprite.Sprite):
+class Enemy(Character):
     def __init__(self):
-        super().__init__(character_sprites)
-        self.image_stand = load_image('Guard.png', (35, 90, 115))
-        self.image = self.image_stand
-        self.frames_run_right = load_frames(load_image('Guard_run.png', (35, 90, 115)), 6, 1)
-        self.frames_run_left = []
-        for im in self.frames_run_right:
-            image = pygame.transform.flip(im, True, False)
-            image.set_colorkey((35, 90, 115))
-            self.frames_run_left.append(image)
-        self.cur_frame = 0
-        self.rect = self.image.get_rect()
+        super().__init__('Guard.png', ('Guard_run.png', (6, 1)), ('Guard_attack.png', (4, 3)))
         self.rect.center = WIDTH // 2, HEIGHT - 23
-        self.fall, self.speed = 5, random.randrange(4, 6)
-        self.jump, self.is_flight = [False, -25], False
-        self.path, self.last_player_cell_coord = [], []
-        self.run, self.timers = [0, 1, False], [30, 0]
+        self.hp, self.speed = random.randrange(400, 700, 100), random.randrange(4, 6)
+        self.path, self.last_player_cell, self.run = [], [], [0, 1, False]
+        self.timers.append(0)
 
     def update(self):
-        cell_player, cell_self = visual_board.get_coords(player.rect.center), visual_board.get_coords(self.rect.center)
-        if cell_player[1] >= cell_self[1] and not self.jump[0]:
+        cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
+        if cell_player[1] >= cell_self[1] and not self.jump[0] and not self.attack[0]:
             if player.rect.right < self.rect.left and self.rect.left > 5:
                 self.rect.x -= self.speed
-                if self.timers[1] == 3:
-                    self.cur_frame = (self.cur_frame + 1) % len(self.frames_run_right)
-                    self.image = self.frames_run_left[self.cur_frame]
+                self.animation('run_left')
             if player.rect.left > self.rect.right and self.rect.right < WIDTH - 5:
                 self.rect.x += self.speed
-                if self.timers[1] == 3:
-                    self.cur_frame = (self.cur_frame + 1) % len(self.frames_run_right)
-                    self.image = self.frames_run_right[self.cur_frame]
-        elif self.path:
+                self.animation('run_right')
+        elif self.path and not self.attack[0]:
             if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50:
                 self.run = [self.path[0][0] * 100 + 50, 1, False]
                 self.run[2] = self.path[0][2]
@@ -192,69 +261,40 @@ class Enemy(pygame.sprite.Sprite):
                     self.run[0] = 0
             elif self.run[0] == 0 and not self.jump[0]:
                 del self.path[0]
-            if self.run[0] != 0 and self.timers[1] == 3:
-                self.cur_frame = (self.cur_frame + 1) % len(self.frames_run_right)
+            if self.run[0] != 0:
                 if self.run[1] == -1:
-                    self.image = self.frames_run_left[self.cur_frame]
+                    self.animation('run_left')
                 else:
-                    self.image = self.frames_run_right[self.cur_frame]
-        else:
+                    self.animation('run_right')
+        elif not self.attack[0]:
             self.image = self.image_stand
-        if self.jump[0]:
-            if self.jump[1] == 25:
-                self.jump = [False, -25]
+            self.set_rect_mask()
+        if not self.jump[0] and not self.is_flight:
+            if self.rect.right > player.rect.center[0] > self.rect.left - 30 and cell_player[1] == cell_self[1]:
+                self.attack[0] = True
+                if self.cur_frame[1] == 7:
+                    self.animation('attack_left', random.choice([True, False]))
+                else:
+                    self.animation('attack_left')
+            elif self.rect.left < player.rect.center[0] < self.rect.right + 30 and cell_player[1] == cell_self[1]:
+                self.attack[0] = True
+                if self.cur_frame[1] == 7:
+                    self.animation('attack_right', random.choice([True, False]))
+                else:
+                    self.animation('attack_right')
             else:
-                for i in range(abs(self.jump[1])):
-                    if self.jump[1] < 0:
-                        self.rect.y -= 1
-                    else:
-                        self.rect.y += 1
-                    if not self.collision():
-                        self.jump[1] = 24
-                        break
-                self.jump[1] += 1
-
-        y = self.rect.y + self.fall  # Падение
-        for j in range(self.fall):
-            self.rect.y += 1
-            self.collision()
-            if self.rect.bottom > HEIGHT - 23:
-                self.rect.bottom = HEIGHT - 23
-        if y == self.rect.y and not self.jump[0]:
-            self.fall += 1
-            self.is_flight = True
-        else:
-            self.fall = 5
-            self.is_flight = False
-        if self.jump[0]:
-            self.is_flight = True
-        if self.last_player_cell_coord != cell_player or self.timers[0] == 0:
-            self.last_player_cell_coord, self.timers[0] = cell_player, 30
+                self.attack = [False, False]
+            if self.cur_frame[1] in [3, 8] and self.attack[0] and not self.attack[1]:
+                if self.rect.left - 35 < player.rect.right or self.rect.right + 35 > player.rect.left:
+                    player.hp -= 40
+                    self.attack[1] = True
+            elif self.cur_frame[1] not in [3, 8]:
+                self.attack[1] = False
+        super().update()
+        if self.last_player_cell != cell_player or self.timers[2] == 30:
+            self.last_player_cell, self.timers[2] = cell_player, 0
             self.finding_path_1(visual_board.board, cell_player, cell_self)
-        self.timers[0] -= 1
-        if self.timers[1] == 3:
-            self.timers[1] = 0
-        else:
-            self.timers[1] += 1
-
-    def collision(self):
-        platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
-        for pl in platforms:
-            if pl.rect.bottom > self.rect.bottom > pl.rect.top > self.rect.top:
-                self.rect.bottom = pl.rect.top
-                return False
-            elif pl.rect.top < self.rect.top < pl.rect.bottom < self.rect.bottom:
-                self.rect.top = pl.rect.bottom
-                return False
-            elif self.rect.top <= pl.rect.top or self.rect.bottom >= pl.rect.bottom:
-                if self.rect.right > pl.rect.left > self.rect.left:
-                    self.rect.right = pl.rect.left
-                elif self.rect.left < pl.rect.right < self.rect.right:
-                    self.rect.left = pl.rect.right
-                return True
-            else:
-                return True
-        return True
+        self.timers[2] += 1
 
     def finding_path_1(self, board, cell_player, cell_self):
         if not player.is_flight and not player.jump[0] and not self.is_flight and not self.jump[0]:
@@ -352,7 +392,7 @@ class Platform(pygame.sprite.Sprite):
         self.image = load_image('platform.png')
         self.rect = self.image.get_rect()
         visual_board.set_values(coord_cell, 1)
-        self.rect.center = visual_board.get_coords_platform(coord_cell)
+        self.rect.center = visual_board.get_coord_platform(coord_cell)
 
 
 def load_frames(image, columns, rows):
@@ -363,6 +403,19 @@ def load_frames(image, columns, rows):
             frame_location = (rect.w * i, rect.h * j)
             frames.append(image.subsurface(pygame.Rect(frame_location, rect.size)))
     return frames
+
+
+def load_frames_sl(images_sizes):
+    frames_sl = {}
+    for image_name_size in images_sizes:
+        name, size = image_name_size
+        frames_sl[name[name.index('_') + 1:-4] + '_right'] = load_frames(load_image(name, (35, 90, 115)), *size)
+        frames_sl[name[name.index('_') + 1:-4] + '_left'] = []
+        for im in frames_sl[name[name.index('_') + 1:-4] + '_right']:
+            image = pygame.transform.flip(im, True, False)
+            image.set_colorkey((35, 90, 115))
+            frames_sl[name[name.index('_') + 1:-4] + '_left'].append(image)
+    return frames_sl, [0 for _ in range(len(images_sizes))]
 
 
 def load_image(name, color_key=None):
@@ -380,9 +433,9 @@ if __name__ == '__main__':
     visual_board = VisualBoard()
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     player = Player()
-    for _ in range(5):
+    for _ in range(1):
         Enemy()
     platform_sprites.add(Platform((2, 5)), Platform((3, 5)), Platform((4, 5)), Platform((6, 4)), Platform((7, 4)),
-                         Platform((8, 2)))
+                         Platform((8, 2)), Platform((0, 1)), Platform((1, 1)), Platform((2, 2)), Platform((3, 3)),
+                         Platform((4, 3)), Platform((9, 5)), Platform((10, 5)))
     game = Game()
-
