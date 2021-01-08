@@ -37,7 +37,7 @@ class Game:
         character_sprites.draw(self.screen)
         platform_sprites.draw(self.screen)
 
-        # visual_board.render(self.screen)
+        visual_board.render(self.screen)
 
         pygame.draw.rect(self.screen, 'red', [25, 15, player.hp // 2, 25], 0)
 
@@ -226,26 +226,53 @@ class Enemy(Character):
         super().__init__('Guard.png', ('Guard_run.png', (6, 1)), ('Guard_attack.png', (4, 3)))
         self.rect.center = WIDTH // 2, HEIGHT - 23
         self.hp, self.speed = random.randrange(400, 700, 100), random.randrange(4, 6)
-        self.path, self.last_player_cell, self.run = [], [], [0, 1, False]
+        self.path, self.run = [], [0, 1, False]
         self.timers.append(0)
 
     def update(self):
         cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
+        if self.timers[2] == 30:
+            self.timers[2] = 0
+            self.finding_path_1(visual_board.board, cell_player, cell_self)
+        self.timers[2] += 1
         if cell_player[1] >= cell_self[1] and not self.jump[0] and not self.attack[0]:
             if player.rect.right < self.rect.left and self.rect.left > 5:
                 self.rect.x -= self.speed
                 self.animation('run_left')
-            if player.rect.left > self.rect.right and self.rect.right < WIDTH - 5:
+            elif player.rect.left > self.rect.right and self.rect.right < WIDTH - 5:
                 self.rect.x += self.speed
                 self.animation('run_right')
+            elif not self.attack[0]:
+                self.image = self.image_stand
+                self.set_rect_mask()
         elif self.path and not self.attack[0]:
-            if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50:
-                self.run = [self.path[0][0] * 100 + 50, 1, False]
+            if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
+                    self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
+                try:
+                    if self.path[1][2] and self.path[1][0] > self.path[0][0]:
+                        coord = self.path[0][0] * 100 + 30
+                    elif self.path[1][2] and self.path[1][0] < self.path[0][0]:
+                        coord = self.path[0][0] * 100 + 80
+                    else:
+                        coord = self.path[0][0] * 100 + 50
+                except IndexError:
+                    coord = self.path[0][0] * 100 + 50
+                self.run = [coord, 1, False]
                 self.run[2] = self.path[0][2]
-            elif self.path[0][0] < cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50:
-                self.run = [self.path[0][0] * 100 + 50, -1, False]
+            elif self.path[0][0] < cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
+                    self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
+                try:
+                    if self.path[1][2] and self.path[1][0] > self.path[0][0]:
+                        coord = self.path[0][0] * 100 + 30
+                    elif self.path[1][2] and self.path[1][0] < self.path[0][0]:
+                        coord = self.path[0][0] * 100 + 80
+                    else:
+                        coord = self.path[0][0] * 100 + 50
+                except IndexError:
+                    coord = self.path[0][0] * 100 + 50
+                self.run = [coord, -1, False]
                 self.run[2] = self.path[0][2]
-            elif self.run[0] > 0:
+            if self.run[0] != 0:
                 if self.run[2] and not self.jump[0]:
                     self.jump[0] = True
                 if self.run[2] and self.jump[1] <= -23:
@@ -259,16 +286,13 @@ class Enemy(Character):
                 if (self.run[1] == 1 and self.run[0] <= self.rect.center[0]) or \
                         (self.run[1] == -1 and self.run[0] >= self.rect.center[0]):
                     self.run[0] = 0
-            elif self.run[0] == 0 and not self.jump[0]:
+            if self.run[0] == 0 and not self.jump[0]:
                 del self.path[0]
             if self.run[0] != 0:
                 if self.run[1] == -1:
                     self.animation('run_left')
                 else:
                     self.animation('run_right')
-        elif not self.attack[0]:
-            self.image = self.image_stand
-            self.set_rect_mask()
         if not self.jump[0] and not self.is_flight:
             if self.rect.right > player.rect.center[0] > self.rect.left - 30 and cell_player[1] == cell_self[1]:
                 self.attack[0] = True
@@ -291,10 +315,6 @@ class Enemy(Character):
             elif self.cur_frame[1] not in [3, 8]:
                 self.attack[1] = False
         super().update()
-        if self.last_player_cell != cell_player or self.timers[2] == 30:
-            self.last_player_cell, self.timers[2] = cell_player, 0
-            self.finding_path_1(visual_board.board, cell_player, cell_self)
-        self.timers[2] += 1
 
     def finding_path_1(self, board, cell_player, cell_self):
         if not player.is_flight and not player.jump[0] and not self.is_flight and not self.jump[0]:
@@ -314,7 +334,6 @@ class Enemy(Character):
 
     def finding_path_2(self, board, cell_player):
         wave = 1
-        self.path = []
         for _ in range(visual_board.height * visual_board.width):
             wave += 1
             for y in range(visual_board.height):
@@ -367,12 +386,13 @@ class Enemy(Character):
                                 option = str(int(option) + 1)
 
                         if y == cell_player[1] and x == cell_player[0]:
-                            board[cell_player[1]][cell_player[0]] = [wave, board[y][x][1] + option]
+                            board[y][x] = [wave, board[y][x][1] + option]
                             return [True, board]
         return [False, []]
 
     def save_path(self, board, cell_player):
         wave, cod_cell = board[cell_player[1]][cell_player[0]][0], board[cell_player[1]][cell_player[0]][1]
+        self.path = []
         self.path.append([*cell_player, False])
         for ind in range(-1, -len(cod_cell), -1):
             wave -= 1
@@ -381,9 +401,13 @@ class Enemy(Character):
                 for x in range(visual_board.width):
                     if board[y][x] == [wave, cod]:
                         self.path.append([x, y, False])
-                        if self.path[-2][1] < y:
-                            self.path[-2][2] = True
+                        try:
+                            if self.path[-2][1] < y:
+                                self.path[-2][2] = True
+                        except IndexError:
+                            pass
         self.path = self.path[::-1]
+        del self.path[0]
 
 
 class Platform(pygame.sprite.Sprite):
@@ -437,5 +461,6 @@ if __name__ == '__main__':
         Enemy()
     platform_sprites.add(Platform((2, 5)), Platform((3, 5)), Platform((4, 5)), Platform((6, 4)), Platform((7, 4)),
                          Platform((8, 2)), Platform((0, 1)), Platform((1, 1)), Platform((2, 2)), Platform((3, 3)),
-                         Platform((4, 3)), Platform((9, 5)), Platform((10, 5)))
+                         Platform((9, 5)), Platform((10, 5)))
     game = Game()
+
