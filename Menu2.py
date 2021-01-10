@@ -36,6 +36,23 @@ def load_image(name, color_key=None):
     return image
 
 
+class Main_menu(pygame.sprite.Sprite):
+
+    def __init__(self, name_file, coord_x, coord_y, size_x, size_y):
+        super().__init__(all_sprites_main_menu)
+
+        self.image = load_image(name_file)  # загружает спрайт
+        self.image = pygame.transform.scale(self.image, (size_x, size_y))
+
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = coord_x, coord_y
+
+    def get_cords(self,  last_y):
+        if self.rect.y < last_y:
+            self.rect.y += 20
+
+
+all_sprites_main_menu = pygame.sprite.Group()  # кнопки: Старт, Настройки, Выход
 all_cur = pygame.sprite.Group()  # курсор
 
 image1 = load_image("FON1.jpg")  # загрузка фона
@@ -44,8 +61,14 @@ image11 = pygame.transform.scale(image1, (1280, 750))
 if __name__ == '__main__':
     cur = Cur()
 
+    # меню
+    start = Main_menu("START_RUSSIA.png", width // 2 - 150, -500, 300, 100)  # кнопка Старт(Start)
+    options = Main_menu("OPTIONS_RUSSIA.png", width // 2 - 125, -300, 250, 70)  # кнопка Настройки(Options)
+    exit = Main_menu("EXIT_RUSSIA.png", width // 2 - 75, -100, 150, 50)  # кнопка Выход(Exit)
+
     running, draw_sprite = True, False
     while running:
+        pygame.mouse.set_visible(False)  # скрывает курсор
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -56,9 +79,14 @@ if __name__ == '__main__':
                 else:
                     draw_sprite = False
 
+        start.get_cords(200)
+        options.get_cords(320)
+        exit.get_cords(400)
+
         screen.blit(image11, (0, 0))
-        pygame.mouse.set_visible(False)  # скрывает курсор
+        all_sprites_main_menu.draw(screen)
 
         if draw_sprite:
             all_cur.draw(screen)
+        pygame.time.Clock().tick(60)
         pygame.display.flip()
