@@ -100,6 +100,12 @@ if __name__ == '__main__':
     options_JUMP = Options_background("JUMP_RUSSIA.png", width + width // 4, 180, 200, 50)  # спрайт прыжок
     options_Jump_space = Options_background("SPACE.png", width + width // 4 + 25, 240, 150, 40)  # прыжок(пробел)
 
+    # настройки_удар
+    options_hit = Options_background("HIT_RUSSIA.png", width + width // 4, 310, 200, 50)  # спрайт удара
+    hit_button = Options_background("HIT_J.png", width + width // 4 + 25, 370, 150, 40)  # кнопка удара
+    hit_right = Options_background("arrow_right.png", width + width // 4 + 180, 375, 25, 25)  # смена(вправо)
+    hit_left = Options_background("arrow_left.png", width // 4 + 35 + width, 375, 25, 25)  # смена(влево)
+
     running, draw_sprite = True, False
 
     background_options = False
@@ -137,6 +143,11 @@ if __name__ == '__main__':
 
             options_JUMP.get_left(width // 4 + 20)
             options_Jump_space.get_left(width // 4 + 20)
+
+            options_hit.get_left(width // 4 + 20)
+            hit_button.get_left(width // 4 + 20)
+            hit_right.get_left(width // 4 + 160)
+            hit_left.get_left(width // 4 + 60)
         else:
             background_fon.get_right(width)
 
@@ -147,6 +158,11 @@ if __name__ == '__main__':
 
             options_JUMP.get_right(width + width // 4)
             options_Jump_space.get_right(width + width // 4)
+
+            options_hit.get_right(width + width // 4)
+            hit_button.get_right(width + width // 4)
+            hit_right.get_right(width + width // 4 + 170)
+            hit_left.get_right(width + width // 4 - 30)
 
         if draw_sprite:
             all_cur.draw(screen)
