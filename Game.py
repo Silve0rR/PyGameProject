@@ -12,6 +12,7 @@ class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.bg = load_image('background.jpg')
+        self.coins = 0
         self.running = True
         self.game_run()
 
@@ -28,18 +29,31 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                coord = event.pos
+                for _ in range(random.randrange(1, 10)):
+                    Coin(*coord, random.choice([-1, 1]))
 
     def update(self):  # Обнавление
         character_sprites.update()
+        background_decor.update()
+        coins_sprites.update()
 
     def visualization(self):  # Визуализация
         self.screen.blit(self.bg, [0, 0])
+        background_decor.draw(self.screen)
+        coins_sprites.draw(self.screen)
         character_sprites.draw(self.screen)
         platform_sprites.draw(self.screen)
+        pygame.draw.rect(self.screen, 'red', [127, 15, player.hp // 2, 35], 0)
+        foreground_decor.draw(self.screen)
 
-        visual_board.render(self.screen)
+        # visual_board.render(self.screen)
 
-        pygame.draw.rect(self.screen, 'red', [25, 15, player.hp // 2, 25], 0)
+        for character in character_sprites:
+            if character != player:
+                pygame.draw.rect(self.screen, 'red', [character.rect.x, character.rect.y - 15,
+                                                      character.hp // 20, 5], 0)
 
 
 class VisualBoard:
@@ -91,6 +105,17 @@ class Character(pygame.sprite.Sprite):
             self.is_flight = False
         if self.jump[0]:
             self.is_flight = True
+        col_char = pygame.sprite.spritecollide(self, character_sprites, False)
+        for char in col_char:
+            if self != char:
+                if self.rect.center[0] + 5 >= char.rect.center[0] >= self.rect.center[0] and\
+                        self.rect.y == char.rect.y:
+                    self.rect.x -= 3
+                    char.rect.x += 3
+                elif self.rect.center[0] - 5 <= char.rect.center[0] <= self.rect.center[0] and\
+                        self.rect.y == char.rect.y:
+                    self.rect.x -= 3
+                    char.rect.x += 3
 
     def collision(self):
         platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
@@ -131,7 +156,7 @@ class Character(pygame.sprite.Sprite):
             if self.timers[0] == 3:
                 self.cur_frame[0] = (self.cur_frame[0] + 1) % len(self.frames_sl[key])
                 self.image = self.frames_sl[key][self.cur_frame[0]]
-                self.set_rect_mask()
+                self.set_rect()
             self.timers[0] += 1
             if self.timers[0] == 4:
                 self.timers[0] = 0
@@ -142,12 +167,12 @@ class Character(pygame.sprite.Sprite):
                 else:
                     self.cur_frame[1] = (self.cur_frame[1] + 1) % len(self.frames_sl[key])
                 self.image = self.frames_sl[key][self.cur_frame[1]]
-                self.set_rect_mask()
+                self.set_rect()
             self.timers[1] += 1
             if self.timers[1] == 11:
                 self.timers[1] = 0
 
-    def set_rect_mask(self):
+    def set_rect(self):
         center = self.rect.center
         self.rect = self.image.get_rect()
         self.rect.center = center
@@ -244,7 +269,7 @@ class Enemy(Character):
                 self.animation('run_right')
             elif not self.attack[0]:
                 self.image = self.image_stand
-                self.set_rect_mask()
+                self.set_rect()
         elif self.path and not self.attack[0]:
             if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
                     self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
@@ -293,6 +318,9 @@ class Enemy(Character):
                     self.animation('run_left')
                 else:
                     self.animation('run_right')
+            else:
+                self.image = self.image_stand
+                self.set_rect()
         if not self.jump[0] and not self.is_flight:
             if self.rect.right > player.rect.center[0] > self.rect.left - 30 and cell_player[1] == cell_self[1]:
                 self.attack[0] = True
@@ -308,6 +336,7 @@ class Enemy(Character):
                     self.animation('attack_right')
             else:
                 self.attack = [False, False]
+                self.timers[1] = 0
             if self.cur_frame[1] in [3, 8] and self.attack[0] and not self.attack[1]:
                 if self.rect.left - 35 < player.rect.right or self.rect.right + 35 > player.rect.left:
                     player.hp -= 40
@@ -388,6 +417,7 @@ class Enemy(Character):
                         if y == cell_player[1] and x == cell_player[0]:
                             board[y][x] = [wave, board[y][x][1] + option]
                             return [True, board]
+
         return [False, []]
 
     def save_path(self, board, cell_player):
@@ -419,6 +449,96 @@ class Platform(pygame.sprite.Sprite):
         self.rect.center = visual_board.get_coord_platform(coord_cell)
 
 
+class PotionStand(pygame.sprite.Sprite):
+    def __init__(self, coord_cell):
+        super().__init__()
+        self.frames = load_frames(load_image('PotionStand.png', (35, 90, 115)), 2, 2)
+        self.image = self.frames[0]
+        self.cur_frame, self.timer = 0, 0
+        self.rect = self.image.get_rect()
+        self.rect.center = [coord_cell[0] * 100 + 50, coord_cell[1] * 100 + 47]
+        self.coord_cell = coord_cell
+
+    def update(self):
+        if self.timer == 9:
+            self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+            self.image = self.frames[self.cur_frame]
+        self.timer += 1
+        if self.timer == 10:
+            self.timer = 0
+        if visual_board.get_coord(player.rect.center) == self.coord_cell:
+            pass
+
+
+class Coin(pygame.sprite.Sprite):
+    def __init__(self, x, y, direction):
+        super().__init__(coins_sprites)
+        self.frames_sl, self.cur_frame = load_frames_sl((('Coin.png', (3, 2)), ('Coin_flight.png', (5, 3))), True)
+        self.image = self.frames_sl['coin'][0]
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.timers, self.is_flight = [240, 0], True
+        self.fall = random.randrange(-15, -2)
+        self.speed = random.randrange(1, 5) * direction
+
+    def update(self):
+        if self.is_flight:
+            if self.timers[1] == 1:
+                self.cur_frame[1] = (self.cur_frame[1] + 1) % len(self.frames_sl['flight'])
+                self.image = self.frames_sl['flight'][self.cur_frame[1]]
+            self.timers[1] += 1
+            if self.timers[1] == 2:
+                self.timers[1] = 0
+        elif not self.is_flight:
+            if self.cur_frame[0] == 0 and self.timers[0] == 240:
+                self.cur_frame[0] = (self.cur_frame[0] + 1) % len(self.frames_sl['coin'])
+                self.image = self.frames_sl['coin'][self.cur_frame[0]]
+            elif 240 > self.cur_frame[0] > 0 and self.timers[0] % 9 == 0:
+                self.cur_frame[0] = (self.cur_frame[0] + 1) % len(self.frames_sl['coin'])
+                self.image = self.frames_sl['coin'][self.cur_frame[0]]
+            self.timers[0] += 1
+            if self.timers[1] == 301:
+                self.timers[1] = 0
+        y = self.rect.y + self.fall
+        for j in range(abs(self.fall)):
+            if self.fall < 0:
+                self.rect.y -= 1
+            else:
+                self.rect.y += 1
+            self.collision()
+            if self.rect.bottom > HEIGHT - 23:
+                self.rect.bottom = HEIGHT - 23
+
+        if y == self.rect.y:
+            self.fall += 1
+            self.is_flight = True
+        else:
+            self.is_flight = False
+        if self.is_flight:
+            self.rect.x += self.speed
+
+    def collision(self):
+        platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
+        for pl in platforms:
+            if pl.rect.bottom > self.rect.bottom > pl.rect.top > self.rect.top:
+                self.rect.bottom = pl.rect.top
+            elif pl.rect.top < self.rect.top < pl.rect.bottom < self.rect.bottom:
+                self.rect.top = pl.rect.bottom
+            elif self.rect.top <= pl.rect.top or self.rect.bottom >= pl.rect.bottom:
+                if self.rect.right > pl.rect.left > self.rect.left:
+                    self.rect.right = pl.rect.left
+                elif self.rect.left < pl.rect.right < self.rect.right:
+                    self.rect.left = pl.rect.right
+
+
+class Decor(pygame.sprite.Sprite):
+    def __init__(self, name_image, coord):
+        super().__init__()
+        self.image = load_image(name_image, (35, 90, 115))
+        self.rect = self.image.get_rect()
+        self.rect.center = coord
+
+
 def load_frames(image, columns, rows):
     rect = pygame.Rect(0, 0, image.get_width() // columns, image.get_height() // rows)
     frames = []
@@ -429,17 +549,27 @@ def load_frames(image, columns, rows):
     return frames
 
 
-def load_frames_sl(images_sizes):
-    frames_sl = {}
-    for image_name_size in images_sizes:
-        name, size = image_name_size
-        frames_sl[name[name.index('_') + 1:-4] + '_right'] = load_frames(load_image(name, (35, 90, 115)), *size)
-        frames_sl[name[name.index('_') + 1:-4] + '_left'] = []
-        for im in frames_sl[name[name.index('_') + 1:-4] + '_right']:
-            image = pygame.transform.flip(im, True, False)
-            image.set_colorkey((35, 90, 115))
-            frames_sl[name[name.index('_') + 1:-4] + '_left'].append(image)
-    return frames_sl, [0 for _ in range(len(images_sizes))]
+def load_frames_sl(image_names_sizes, coin=False):
+    if not coin:
+        frames_sl = {}
+        for image_name_size in image_names_sizes:
+            name, size = image_name_size
+            frames_sl[name[name.index('_') + 1:-4] + '_right'] = load_frames(load_image(name, (35, 90, 115)), *size)
+            frames_sl[name[name.index('_') + 1:-4] + '_left'] = []
+            for im in frames_sl[name[name.index('_') + 1:-4] + '_right']:
+                image = pygame.transform.flip(im, True, False)
+                image.set_colorkey((35, 90, 115))
+                frames_sl[name[name.index('_') + 1:-4] + '_left'].append(image)
+        return frames_sl, [0 for _ in range(len(image_names_sizes))]
+    else:
+        frames_sl = {}
+        for image_name_size in image_names_sizes:
+            name, size = image_name_size
+            if '_' in name:
+                frames_sl['flight'] = load_frames(load_image(name, (35, 90, 115)), *size)
+            else:
+                frames_sl['coin'] = load_frames(load_image(name, (35, 90, 115)), *size)
+        return frames_sl, [0 for _ in range(len(image_names_sizes))]
 
 
 def load_image(name, color_key=None):
@@ -456,11 +586,15 @@ def load_image(name, color_key=None):
 if __name__ == '__main__':
     visual_board = VisualBoard()
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
+    foreground_decor, background_decor = pygame.sprite.Group(), pygame.sprite.Group()
+    coins_sprites = pygame.sprite.Group()
     player = Player()
     for _ in range(1):
         Enemy()
     platform_sprites.add(Platform((2, 5)), Platform((3, 5)), Platform((4, 5)), Platform((6, 4)), Platform((7, 4)),
                          Platform((8, 2)), Platform((0, 1)), Platform((1, 1)), Platform((2, 2)), Platform((3, 3)),
-                         Platform((9, 5)), Platform((10, 5)))
+                         Platform((4, 3)), Platform((9, 5)), Platform((10, 5)), Platform((4, 1)), Platform((5, 1)),
+                         Platform((6, 1)), Platform((7, 1)))
+    foreground_decor.add(Decor('foregroundPlant0.png', (639, 683)), Decor('Frame.png', (330, 35)))
+    background_decor.add(PotionStand((6, 6)))
     game = Game()
-
