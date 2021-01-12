@@ -90,6 +90,12 @@ if __name__ == '__main__':
     # настройки_фон
     background_fon = Options_background("Прозрачный фон.png", width, 0, 1280, 750)  # прозрачный фон
 
+    # настройки_управление_ персонажем
+    optinons_control = Options_background("CONTROL_RUSSIA.png", width + width // 4, 50, 200, 50)  # спрайт управления
+    options_control_arrows = Options_background("ARROWS.png", width + width // 4 + 25, 115, 150, 40)  # стрелочки
+    control_right = Options_background("arrow_right.png", width + width // 4 + 180, 120, 25, 25)  # смена(вправо)
+    control_left = Options_background("arrow_left.png", width + width // 4 + 35, 120, 25, 25)  # смена(влево)
+
     running, draw_sprite = True, False
 
     background_options = False
@@ -119,8 +125,18 @@ if __name__ == '__main__':
 
         if background_options:
             background_fon.get_left(0)
+
+            optinons_control.get_left(width // 4 + 20)
+            options_control_arrows.get_left(width // 4 + 20)
+            control_right.get_left(width // 4 + 180)
+            control_left.get_left(width // 4)
         else:
             background_fon.get_right(width)
+
+            optinons_control.get_right(width + width // 4)
+            options_control_arrows.get_right(width + width // 4)
+            control_right.get_right(width + width // 4 + 170)
+            control_left.get_right(width + width // 4 - 30)
 
         if draw_sprite:
             all_cur.draw(screen)
