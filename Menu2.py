@@ -52,6 +52,27 @@ class Main_menu(pygame.sprite.Sprite):
             self.rect.y += 20
 
 
+class Options_background(pygame.sprite.Sprite):  # настройки
+
+    def __init__(self, name_file, coord_x, coord_y, size_x, size_y):
+        super().__init__(all_Background_options)
+
+        self.image = load_image(name_file)  # загружает спрайт
+        self.image = pygame.transform.scale(self.image, (size_x, size_y))
+
+        self.rect = self.image.get_rect()
+        self.rect.x, self.rect.y = coord_x, coord_y
+
+    def get_left(self, last_x):
+        if self.rect.x > last_x:
+            self.rect.x -= 40
+
+    def get_right(self, last_x):
+        if self.rect.x < last_x:
+            self.rect.x += 40
+
+
+all_Background_options = pygame.sprite.Group()  # настройки
 all_sprites_main_menu = pygame.sprite.Group()  # кнопки: Старт, Настройки, Выход
 all_cur = pygame.sprite.Group()  # курсор
 
@@ -66,7 +87,12 @@ if __name__ == '__main__':
     options = Main_menu("OPTIONS_RUSSIA.png", width // 2 - 125, -300, 250, 70)  # кнопка Настройки(Options)
     exit = Main_menu("EXIT_RUSSIA.png", width // 2 - 75, -100, 150, 50)  # кнопка Выход(Exit)
 
+    # настройки_фон
+    background_fon = Options_background("Прозрачный фон.png", width, 0, 1280, 750)  # прозрачный фон
+
     running, draw_sprite = True, False
+
+    background_options = False
     while running:
         pygame.mouse.set_visible(False)  # скрывает курсор
         for event in pygame.event.get():
@@ -78,6 +104,10 @@ if __name__ == '__main__':
                     draw_sprite = True
                 else:
                     draw_sprite = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if width // 2 - 125 < x < width // 2 + 115 and 320 < y < 390:
+                    background_options = True
 
         start.get_cords(200)
         options.get_cords(320)
@@ -85,6 +115,12 @@ if __name__ == '__main__':
 
         screen.blit(image11, (0, 0))
         all_sprites_main_menu.draw(screen)
+        all_Background_options.draw(screen)
+
+        if background_options:
+            background_fon.get_left(0)
+        else:
+            background_fon.get_right(width)
 
         if draw_sprite:
             all_cur.draw(screen)
