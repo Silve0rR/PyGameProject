@@ -106,6 +106,12 @@ if __name__ == '__main__':
     hit_right = Options_background("arrow_right.png", width + width // 4 + 180, 375, 25, 25)  # смена(вправо)
     hit_left = Options_background("arrow_left.png", width // 4 + 35 + width, 375, 25, 25)  # смена(влево)
 
+    # настройки_языки
+    option_languages = Options_background("LANGUAGES_RUSSIA.png", width + width // 4 + width // 4, 50, 200, 50)
+    languages_sprite = Options_background("LANG_RUSSIA.png", width + width // 4 + width // 4 + 20, 120, 80, 20)
+    language_right = Options_background("arrow_right.png", width + width // 4 + width // 4 + 50, 120, 25, 25)
+    language_left = Options_background("arrow_left.png", width + width // 4 + width // 4, 120, 25, 25)
+
     running, draw_sprite = True, False
 
     background_options = False
@@ -148,6 +154,11 @@ if __name__ == '__main__':
             hit_button.get_left(width // 4 + 20)
             hit_right.get_left(width // 4 + 160)
             hit_left.get_left(width // 4 + 60)
+
+            option_languages.get_left(width // 4 + width // 4)
+            languages_sprite.get_left(width // 4 + width // 4 + 60)
+            language_right.get_left(width // 4 + width // 4 + 160)
+            language_left.get_left(width // 4 + width // 4)
         else:
             background_fon.get_right(width)
 
@@ -158,6 +169,11 @@ if __name__ == '__main__':
 
             options_JUMP.get_right(width + width // 4)
             options_Jump_space.get_right(width + width // 4)
+
+            options_hit.get_right(width + width // 4)
+            hit_button.get_right(width + width // 4)
+            hit_right.get_right(width + width // 4 + 170)
+            hit_left.get_right(width + width // 4 - 30)
 
             options_hit.get_right(width + width // 4)
             hit_button.get_right(width + width // 4)
