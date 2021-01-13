@@ -9,6 +9,10 @@ pygame.display.set_caption('Меню')
 RUSSIA = True
 ENGLISH = False
 
+HIT_J = True
+HIT_K = False
+HIT_L = False
+
 
 class Cur(pygame.sprite.Sprite):
     def __init__(self):
@@ -149,14 +153,12 @@ if __name__ == '__main__':
                 x, y = event.pos
                 if width // 2 - 125 < x < width // 2 + 115 and 320 < y < 390:
                     background_options = True
-            if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if 0 < x < 50 and height - 25 < y < height:
+                if 0 < x < 50 and height - 25 < y < height:  # закрытие настроек
                     background_options = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
                 if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or\
-                        (width // 4 + width // 4 - 15 < x < width // 4 + width // 4 + 10 and 120 < y < 145):
+                        (width // 4 + width // 4 - 15 < x < width // 4 + width // 4 + 10 and 120 < y < 145):  # язык
                     if not ENGLISH:
                         RUSSIA = False
                         ENGLISH = True
@@ -187,6 +189,20 @@ if __name__ == '__main__':
                         languages_sprite.rename("LANG_RUSSIA.png")
 
                         back_main.rename("BACK_RUSSIA.png")
+                if (width // 4 + 120 < x < width // 4 + 155 and 375 < y < 400) or\
+                        (width // 4 + 20 < x < width // 4 + 45 and 375 < y < 400):  # смена кнопки удара
+                    if HIT_J:
+                        HIT_J = False
+                        HIT_K = True
+                        hit_button.rename("HIT_K.png")
+                    elif HIT_K:
+                        HIT_K = False
+                        HIT_L = True
+                        hit_button.rename("HIT_L.png")
+                    elif HIT_L:
+                        HIT_L = False
+                        HIT_J = True
+                        hit_button.rename("HIT_J.png")
 
         start.get_cords(200)
         options.get_cords(320)
