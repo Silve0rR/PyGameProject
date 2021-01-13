@@ -112,6 +112,9 @@ if __name__ == '__main__':
     language_right = Options_background("arrow_right.png", width + width // 4 + width // 4 + 50, 120, 25, 25)
     language_left = Options_background("arrow_left.png", width + width // 4 + width // 4, 120, 25, 25)
 
+    # возвращение в главное меню
+    back_main = Options_background("EXIT_RUSSIA.png", width + 50, height - 25, 50, 25)
+
     running, draw_sprite = True, False
 
     background_options = False
@@ -130,6 +133,10 @@ if __name__ == '__main__':
                 x, y = event.pos
                 if width // 2 - 125 < x < width // 2 + 115 and 320 < y < 390:
                     background_options = True
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if 0 < x < 50 and height - 25 < y < height:
+                    background_options = False
 
         start.get_cords(200)
         options.get_cords(320)
@@ -159,6 +166,8 @@ if __name__ == '__main__':
             languages_sprite.get_left(width // 4 + width // 4 + 60)
             language_right.get_left(width // 4 + width // 4 + 160)
             language_left.get_left(width // 4 + width // 4)
+
+            back_main.get_left(0)
         else:
             background_fon.get_right(width)
 
@@ -175,10 +184,12 @@ if __name__ == '__main__':
             hit_right.get_right(width + width // 4 + 170)
             hit_left.get_right(width + width // 4 - 30)
 
-            options_hit.get_right(width + width // 4)
-            hit_button.get_right(width + width // 4)
-            hit_right.get_right(width + width // 4 + 170)
-            hit_left.get_right(width + width // 4 - 30)
+            option_languages.get_right(width + width // 4 + width // 4)
+            languages_sprite.get_right(width + width // 4 + width // 4 + 100)
+            language_right.get_right(width + width // 4 + width // 4 + 50)
+            language_left.get_right(width + width // 4)
+
+            back_main.get_right(width)
 
         if draw_sprite:
             all_cur.draw(screen)
