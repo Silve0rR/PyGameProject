@@ -6,6 +6,10 @@ screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Меню')
 
 
+RUSSIA = True
+ENGLISH = False
+
+
 class Cur(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__(all_cur)
@@ -43,6 +47,8 @@ class Main_menu(pygame.sprite.Sprite):
 
         self.image = load_image(name_file)  # загружает спрайт
         self.image = pygame.transform.scale(self.image, (size_x, size_y))
+        self.size_x = size_x
+        self.size_y = size_y
 
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = coord_x, coord_y
@@ -50,6 +56,10 @@ class Main_menu(pygame.sprite.Sprite):
     def get_cords(self,  last_y):
         if self.rect.y < last_y:
             self.rect.y += 20
+
+    def rename(self, name):
+        self.image = load_image(name)
+        self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
 
 
 class Options_background(pygame.sprite.Sprite):  # настройки
@@ -59,6 +69,8 @@ class Options_background(pygame.sprite.Sprite):  # настройки
 
         self.image = load_image(name_file)  # загружает спрайт
         self.image = pygame.transform.scale(self.image, (size_x, size_y))
+        self.size_x = size_x
+        self.size_y = size_y
 
         self.rect = self.image.get_rect()
         self.rect.x, self.rect.y = coord_x, coord_y
@@ -70,6 +82,10 @@ class Options_background(pygame.sprite.Sprite):  # настройки
     def get_right(self, last_x):
         if self.rect.x < last_x:
             self.rect.x += 40
+
+    def rename(self, name):
+        self.image = load_image(name)
+        self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
 
 
 all_Background_options = pygame.sprite.Group()  # настройки
@@ -113,7 +129,7 @@ if __name__ == '__main__':
     language_left = Options_background("arrow_left.png", width + width // 4 + width // 4, 120, 25, 25)
 
     # возвращение в главное меню
-    back_main = Options_background("EXIT_RUSSIA.png", width + 50, height - 25, 50, 25)
+    back_main = Options_background("BACK_RUSSIA.png", width + 50, height - 25, 50, 25)
 
     running, draw_sprite = True, False
 
@@ -137,6 +153,40 @@ if __name__ == '__main__':
                 x, y = event.pos
                 if 0 < x < 50 and height - 25 < y < height:
                     background_options = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or\
+                        (width // 4 + width // 4 - 15 < x < width // 4 + width // 4 + 10 and 120 < y < 145):
+                    if not ENGLISH:
+                        RUSSIA = False
+                        ENGLISH = True
+                        start.rename("START_ENGLISH.png", )
+                        options.rename("OPTIONS_ENGLISH.png")
+                        exit.rename("EXIT_ENGLISH.png")
+
+                        optinons_control.rename("CONTROL_ENGLISH.png")
+
+                        options_JUMP.rename("JUMP_ENGLISH.png")
+
+                        option_languages.rename("LANGUAGES_ENGLISH.png")
+                        languages_sprite.rename("LANG_ENGLISH.png")
+
+                        back_main.rename("BACK_ENGLISH.png")
+                    else:
+                        RUSSIA = True
+                        ENGLISH = False
+                        start.rename("START_RUSSIA.png")
+                        options.rename("OPTIONS_RUSSIA.png")
+                        exit.rename("EXIT_RUSSIA.png")
+
+                        optinons_control.rename("CONTROL_RUSSIA.png")
+
+                        options_JUMP.rename("JUMP_RUSSIA.png")
+
+                        option_languages.rename("LANGUAGES_RUSSIA.png")
+                        languages_sprite.rename("LANG_RUSSIA.png")
+
+                        back_main.rename("BACK_RUSSIA.png")
 
         start.get_cords(200)
         options.get_cords(320)
