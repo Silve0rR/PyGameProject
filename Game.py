@@ -13,8 +13,8 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.bg = load_image('background.jpg')
         self.coins = 0
+        self.wave = 1
         self.running = True
-        self.game_run()
 
     def game_run(self):
         while self.running:
@@ -36,17 +36,25 @@ class Game:
 
     def update(self):  # Обнавление
         character_sprites.update()
-        background_decor.update()
+        invisible_sprites.update()
         coins_sprites.update()
 
     def visualization(self):  # Визуализация
         self.screen.blit(self.bg, [0, 0])
-        background_decor.draw(self.screen)
+        background_sprites.draw(self.screen)
+        invisible_sprites.draw(self.screen)
         coins_sprites.draw(self.screen)
         character_sprites.draw(self.screen)
         platform_sprites.draw(self.screen)
         pygame.draw.rect(self.screen, 'red', [127, 15, player.hp // 2, 35], 0)
-        foreground_decor.draw(self.screen)
+        foreground_sprites.draw(self.screen)
+        self.screen.blit(pygame.font.Font(None, 30).render(str(self.coins), True, (255, 255, 255)), (45, 83))
+        self.screen.blit(pygame.font.Font(None, 25).render('Купить зелье?', True,
+                                                           (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 5))
+        self.screen.blit(pygame.font.Font(None, 20).render('+' + str(ps.restoration) + 'HP', True,
+                                                           (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 35))
+        self.screen.blit(pygame.font.Font(None, 20).render('Цена: ' + str(ps.prise), True,
+                                                           (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 60))
 
         # visual_board.render(self.screen)
 
@@ -161,7 +169,7 @@ class Character(pygame.sprite.Sprite):
             if self.timers[0] == 4:
                 self.timers[0] = 0
         elif key[:key.index('_')] == 'attack':
-            if self.timers[1] == 10:
+            if self.timers[1] == 4:
                 if not click_attack:
                     self.cur_frame[1] = -1
                 else:
@@ -169,7 +177,7 @@ class Character(pygame.sprite.Sprite):
                 self.image = self.frames_sl[key][self.cur_frame[1]]
                 self.set_rect()
             self.timers[1] += 1
-            if self.timers[1] == 11:
+            if self.timers[1] == 5:
                 self.timers[1] = 0
 
     def set_rect(self):
@@ -194,6 +202,17 @@ class Player(pygame.sprite.Sprite):
             self.rect.x -= 6
         if keys[pygame.K_d] and self.rect.right < WIDTH - 5:
             self.rect.x += 6
+        if keys[pygame.K_e]:
+            if visual_board.get_coord(self.rect.center) == ps.coord_cell and\
+                    not ps.invisibility and game.coins >= ps.prise:
+                self.hp += ps.restoration
+                if self.hp > 1000:
+                    self.hp = 1000
+                game.coins -= ps.prise
+                ps.uses += 1
+                ps.invisibility = True
+            else:
+                pass
         if not self.jump[0] and not self.is_flight:
             if keys[pygame.K_SPACE]:
                 self.jump[0] = True
@@ -225,6 +244,9 @@ class Player(pygame.sprite.Sprite):
             self.is_flight = False
         if self.jump[0]:
             self.is_flight = True
+        coins = pygame.sprite.spritecollide(self, coins_sprites, True)
+        if coins:
+            game.coins += len(coins)
 
     def collision(self):
         platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
@@ -451,23 +473,49 @@ class Platform(pygame.sprite.Sprite):
 
 class PotionStand(pygame.sprite.Sprite):
     def __init__(self, coord_cell):
-        super().__init__()
+        super().__init__(invisible_sprites)
         self.frames = load_frames(load_image('PotionStand.png', (35, 90, 115)), 2, 2)
         self.image = self.frames[0]
         self.cur_frame, self.timer = 0, 0
         self.rect = self.image.get_rect()
-        self.rect.center = [coord_cell[0] * 100 + 50, coord_cell[1] * 100 + 47]
-        self.coord_cell = coord_cell
+        self.rect.center = (-100, -100)
+        self.coord_cell, self.invisibility = coord_cell, False
+        self.restoration, self.prise, self.uses = random.randrange(200, 500, 100), 0, 0
 
     def update(self):
-        if self.timer == 9:
-            self.cur_frame = (self.cur_frame + 1) % len(self.frames)
-            self.image = self.frames[self.cur_frame]
-        self.timer += 1
-        if self.timer == 10:
-            self.timer = 0
-        if visual_board.get_coord(player.rect.center) == self.coord_cell:
-            pass
+        if self.invisibility and self.rect.center != (-100, -100):
+            self.rect.center = (-100, -100)
+        elif not self.invisibility and self.rect.center == (-100, -100):
+            self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 47)
+            self.restoration = random.randrange(200, 500, 100)
+            self.prise = (self.restoration // 100) * 5 + game.wave * 2 + self.uses * 3
+        if not self.invisibility:
+            if self.timer == 9:
+                self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+                self.image = self.frames[self.cur_frame]
+            self.timer += 1
+            if self.timer == 10:
+                self.timer = 0
+        if visual_board.get_coord(player.rect.center) == self.coord_cell and not self.invisibility:
+            psw.invisibility = False
+        else:
+            psw.invisibility = True
+
+
+class PotionStandWindow(pygame.sprite.Sprite):
+    def __init__(self, coord_cell):
+        super().__init__(invisible_sprites)
+        self.image = load_image('PotionStand_window.png', (35, 90, 115))
+        self.rect = self.image.get_rect()
+        self.rect.center = (coord_cell[0] * 100 + 50, coord_cell[1] * 100 + 50)
+        self.coord_cell = coord_cell
+        self.invisibility = True
+
+    def update(self):
+        if self.invisibility:
+            self.rect.center = (-150, -50)
+        else:
+            self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 50)
 
 
 class Coin(pygame.sprite.Sprite):
@@ -499,17 +547,18 @@ class Coin(pygame.sprite.Sprite):
             self.timers[0] += 1
             if self.timers[1] == 301:
                 self.timers[1] = 0
-        y = self.rect.y + self.fall
+        y, top_col = self.rect.y + self.fall, False
         for j in range(abs(self.fall)):
             if self.fall < 0:
                 self.rect.y -= 1
             else:
                 self.rect.y += 1
-            self.collision()
+            if self.collision() is not None:
+                top_col = True
             if self.rect.bottom > HEIGHT - 23:
                 self.rect.bottom = HEIGHT - 23
 
-        if y == self.rect.y:
+        if y == self.rect.y or top_col:
             self.fall += 1
             self.is_flight = True
         else:
@@ -524,6 +573,7 @@ class Coin(pygame.sprite.Sprite):
                 self.rect.bottom = pl.rect.top
             elif pl.rect.top < self.rect.top < pl.rect.bottom < self.rect.bottom:
                 self.rect.top = pl.rect.bottom
+                return True
             elif self.rect.top <= pl.rect.top or self.rect.bottom >= pl.rect.bottom:
                 if self.rect.right > pl.rect.left > self.rect.left:
                     self.rect.right = pl.rect.left
@@ -584,10 +634,11 @@ def load_image(name, color_key=None):
 
 
 if __name__ == '__main__':
+    game = Game()
     visual_board = VisualBoard()
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
-    foreground_decor, background_decor = pygame.sprite.Group(), pygame.sprite.Group()
-    coins_sprites = pygame.sprite.Group()
+    foreground_sprites, background_sprites = pygame.sprite.Group(), pygame.sprite.Group()
+    coins_sprites, invisible_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     player = Player()
     for _ in range(1):
         Enemy()
@@ -595,6 +646,7 @@ if __name__ == '__main__':
                          Platform((8, 2)), Platform((0, 1)), Platform((1, 1)), Platform((2, 2)), Platform((3, 3)),
                          Platform((4, 3)), Platform((9, 5)), Platform((10, 5)), Platform((4, 1)), Platform((5, 1)),
                          Platform((6, 1)), Platform((7, 1)))
-    foreground_decor.add(Decor('foregroundPlant0.png', (639, 683)), Decor('Frame.png', (330, 35)))
-    background_decor.add(PotionStand((6, 6)))
-    game = Game()
+    foreground_sprites.add(Decor('foregroundPlant0.png', (639, 683)), Decor('Frame.png', (330, 35)),
+                           Decor('Coin_pin.png', (29, 90)))
+    ps, psw = PotionStand([6, 6]), PotionStandWindow([6, 5])
+    game.game_run()
