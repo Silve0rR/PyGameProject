@@ -5,6 +5,11 @@ size = width, height = 1270, 750
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Меню')
 
+pygame.mixer.init()
+
+pygame.mixer.music.load('Музыка 3(в меню).mp3')
+pygame.mixer.music.queue('Музыка 4.mp3')
+pygame.mixer.music.play()
 
 RUSSIA = True
 ENGLISH = False
@@ -156,66 +161,66 @@ if __name__ == '__main__':
                 x, y = event.pos
                 if width // 2 - 125 < x < width // 2 + 115 and 320 < y < 390:
                     background_options = True
-                x, y = event.pos
-                if 0 < x < 50 and height - 25 < y < height:  # закрытие настроек
-                    background_options = False
-                x, y = event.pos
-                if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or\
-                        (width // 4 + width // 4 - 15 < x < width // 4 + width // 4 + 10 and 120 < y < 145):  # язык
-                    if not ENGLISH:
-                        RUSSIA = False
-                        ENGLISH = True
-                        start.rename("START_ENGLISH.png", )
-                        options.rename("OPTIONS_ENGLISH.png")
-                        exit.rename("EXIT_ENGLISH.png")
+                if background_options:
+                    if 0 < x < 50 and height - 25 < y < height:  # закрытие настроек
+                        background_options = False
 
-                        optinons_control.rename("CONTROL_ENGLISH.png")
+                    if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or\
+                            (width // 4 + width // 4 - 15 < x < width // 4 + width // 4 + 10 and 120 < y < 145):  # язык
+                        if not ENGLISH:
+                            RUSSIA = False
+                            ENGLISH = True
+                            start.rename("START_ENGLISH.png", )
+                            options.rename("OPTIONS_ENGLISH.png")
+                            exit.rename("EXIT_ENGLISH.png")
 
-                        options_JUMP.rename("JUMP_ENGLISH.png")
+                            optinons_control.rename("CONTROL_ENGLISH.png")
 
-                        option_languages.rename("LANGUAGES_ENGLISH.png")
-                        languages_sprite.rename("LANG_ENGLISH.png")
+                            options_JUMP.rename("JUMP_ENGLISH.png")
 
-                        back_main.rename("BACK_ENGLISH.png")
-                    else:
-                        RUSSIA = True
-                        ENGLISH = False
-                        start.rename("START_RUSSIA.png")
-                        options.rename("OPTIONS_RUSSIA.png")
-                        exit.rename("EXIT_RUSSIA.png")
+                            option_languages.rename("LANGUAGES_ENGLISH.png")
+                            languages_sprite.rename("LANG_ENGLISH.png")
 
-                        optinons_control.rename("CONTROL_RUSSIA.png")
+                            back_main.rename("BACK_ENGLISH.png")
+                        else:
+                            RUSSIA = True
+                            ENGLISH = False
+                            start.rename("START_RUSSIA.png")
+                            options.rename("OPTIONS_RUSSIA.png")
+                            exit.rename("EXIT_RUSSIA.png")
 
-                        options_JUMP.rename("JUMP_RUSSIA.png")
+                            optinons_control.rename("CONTROL_RUSSIA.png")
 
-                        option_languages.rename("LANGUAGES_RUSSIA.png")
-                        languages_sprite.rename("LANG_RUSSIA.png")
+                            options_JUMP.rename("JUMP_RUSSIA.png")
 
-                        back_main.rename("BACK_RUSSIA.png")
-                if (width // 4 + 120 < x < width // 4 + 155 and 375 < y < 400) or\
-                        (width // 4 + 20 < x < width // 4 + 45 and 375 < y < 400):  # смена кнопки удара
-                    if HIT_J:
-                        HIT_J = False
-                        HIT_K = True
-                        hit_button.rename("HIT_K.png")
-                    elif HIT_K:
-                        HIT_K = False
-                        HIT_L = True
-                        hit_button.rename("HIT_L.png")
-                    elif HIT_L:
-                        HIT_L = False
-                        HIT_J = True
-                        hit_button.rename("HIT_J.png")
-                if (width // 4 + 160 < x < width // 4 + 190 and 120 < y < 145) or\
-                        (width // 4 - 25 < x < width // 4 + 5 and 120 < y < 145):
-                    if ARROWS:
-                        ARROWS = False
-                        WASD = True
-                        options_control_arrows.rename("WASD.png")
-                    elif WASD:
-                        ARROWS = True
-                        WASD = False
-                        options_control_arrows.rename("ARROWS.png")
+                            option_languages.rename("LANGUAGES_RUSSIA.png")
+                            languages_sprite.rename("LANG_RUSSIA.png")
+
+                            back_main.rename("BACK_RUSSIA.png")
+                    if (width // 4 + 120 < x < width // 4 + 155 and 375 < y < 400) or\
+                            (width // 4 + 20 < x < width // 4 + 45 and 375 < y < 400):  # смена кнопки удара
+                        if HIT_J:
+                            HIT_J = False
+                            HIT_K = True
+                            hit_button.rename("HIT_K.png")
+                        elif HIT_K:
+                            HIT_K = False
+                            HIT_L = True
+                            hit_button.rename("HIT_L.png")
+                        elif HIT_L:
+                            HIT_L = False
+                            HIT_J = True
+                            hit_button.rename("HIT_J.png")
+                    if (width // 4 + 160 < x < width // 4 + 190 and 120 < y < 145) or\
+                            (width // 4 - 25 < x < width // 4 + 5 and 120 < y < 145):
+                        if ARROWS:
+                            ARROWS = False
+                            WASD = True
+                            options_control_arrows.rename("WASD.png")
+                        elif WASD:
+                            ARROWS = True
+                            WASD = False
+                            options_control_arrows.rename("ARROWS.png")
 
         start.get_cords(200)
         options.get_cords(320)
