@@ -9,6 +9,9 @@ pygame.display.set_caption('Меню')
 RUSSIA = True
 ENGLISH = False
 
+ARROWS = True
+WASD = False
+
 HIT_J = True
 HIT_K = False
 HIT_L = False
@@ -203,6 +206,16 @@ if __name__ == '__main__':
                         HIT_L = False
                         HIT_J = True
                         hit_button.rename("HIT_J.png")
+                if (width // 4 + 160 < x < width // 4 + 190 and 120 < y < 145) or\
+                        (width // 4 - 25 < x < width // 4 + 5 and 120 < y < 145):
+                    if ARROWS:
+                        ARROWS = False
+                        WASD = True
+                        options_control_arrows.rename("WASD.png")
+                    elif WASD:
+                        ARROWS = True
+                        WASD = False
+                        options_control_arrows.rename("ARROWS.png")
 
         start.get_cords(200)
         options.get_cords(320)
