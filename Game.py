@@ -12,7 +12,7 @@ class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.bg = load_image('background.jpg')
-        self.coins = 0
+        self.coins, self.account, self.time = 0, 0, 0
         self.wave = 1
         self.running = True
 
@@ -22,6 +22,7 @@ class Game:
             self.events()
             self.update()
             self.visualization()
+            self.time += 1
             pygame.display.flip()
         pygame.quit()
 
@@ -38,6 +39,8 @@ class Game:
         character_sprites.update()
         invisible_sprites.update()
         coins_sprites.update()
+        if player.hp <= 0:
+            game_over_sprite.update()
 
     def visualization(self):  # Визуализация
         self.screen.blit(self.bg, [0, 0])
@@ -49,19 +52,28 @@ class Game:
         pygame.draw.rect(self.screen, 'red', [127, 15, player.hp // 2, 35], 0)
         foreground_sprites.draw(self.screen)
         self.screen.blit(pygame.font.Font(None, 30).render(str(self.coins), True, (255, 255, 255)), (45, 83))
-        self.screen.blit(pygame.font.Font(None, 25).render('Купить зелье?', True,
-                                                           (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 5))
-        self.screen.blit(pygame.font.Font(None, 20).render('+' + str(ps.restoration) + 'HP', True,
-                                                           (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 35))
-        self.screen.blit(pygame.font.Font(None, 20).render('Цена: ' + str(ps.prise), True,
-                                                           (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 60))
+        self.screen.blit(pygame.font.Font(None, 35).render('Счёт: ' + str(self.account), True, (255, 255, 255)),
+                         (WIDTH // 2 + 100, 20))
+        self.screen.blit(pygame.font.Font(None, 35).render(str((self.time // 60) // 60) + ':' + str(self.time // 60),
+                                                           True, (255, 255, 255)), (WIDTH // 2 + 500, 20))
+        if not psw.invisibility:
+            self.screen.blit(pygame.font.Font(None, 25).render('Зелье', True,
+                                                               (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 5))
+            self.screen.blit(pygame.font.Font(None, 20).render('+' + str(ps.restoration) + 'HP', True,
+                                                               (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 25))
+            self.screen.blit(pygame.font.Font(None, 20).render('Цена: ' + str(ps.prise), True,
+                                                               (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 50))
+        if not psw_pay.invisibility:
+            self.screen.blit(pygame.font.Font(None, 15).render('Купить', True, (0, 0, 0)),
+                             (psw_pay.rect.center[0] - 9, psw_pay.rect.center[1] - 4))
 
         # visual_board.render(self.screen)
-
-        for character in character_sprites:
-            if character != player:
-                pygame.draw.rect(self.screen, 'red', [character.rect.x, character.rect.y - 15,
-                                                      character.hp // 20, 5], 0)
+        global hp_enemy
+        for coord in hp_enemy:
+            pygame.draw.rect(game.screen, 'red', coord, 0)
+        hp_enemy = []
+        if player.hp <= 0:
+            game_over_sprite.draw(self.screen)
 
 
 class VisualBoard:
@@ -197,56 +209,57 @@ class Player(pygame.sprite.Sprite):
         self.attack = [False, False]
 
     def update(self):
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and self.rect.left > 5:
-            self.rect.x -= 6
-        if keys[pygame.K_d] and self.rect.right < WIDTH - 5:
-            self.rect.x += 6
-        if keys[pygame.K_e]:
-            if visual_board.get_coord(self.rect.center) == ps.coord_cell and\
-                    not ps.invisibility and game.coins >= ps.prise:
-                self.hp += ps.restoration
-                if self.hp > 1000:
-                    self.hp = 1000
-                game.coins -= ps.prise
-                ps.uses += 1
-                ps.invisibility = True
-            else:
-                pass
-        if not self.jump[0] and not self.is_flight:
-            if keys[pygame.K_SPACE]:
-                self.jump[0] = True
-        elif self.jump[0]:
-            if self.jump[1] == 25:
-                self.jump = [False, -25]
-            else:
-                for _ in range(abs(self.jump[1])):
-                    if self.jump[1] < 0:
-                        self.rect.y -= 1
-                    else:
-                        self.rect.y += 1
-                    if not self.collision():
-                        self.jump[1] = 24
-                        break
-                self.jump[1] += 1
+        if self.hp > 0:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_a] and self.rect.left > 5:
+                self.rect.x -= 6
+            if keys[pygame.K_d] and self.rect.right < WIDTH - 5:
+                self.rect.x += 6
+            if keys[pygame.K_e]:
+                if visual_board.get_coord(self.rect.center) == ps.coord_cell and\
+                        not ps.invisibility and game.coins >= ps.prise:
+                    self.hp += ps.restoration
+                    if self.hp > 1000:
+                        self.hp = 1000
+                    game.coins -= ps.prise
+                    ps.uses += 1
+                    ps.invisibility = True
+                else:
+                    pass
+            if not self.jump[0] and not self.is_flight:
+                if keys[pygame.K_SPACE]:
+                    self.jump[0] = True
+            elif self.jump[0]:
+                if self.jump[1] == 25:
+                    self.jump = [False, -25]
+                else:
+                    for _ in range(abs(self.jump[1])):
+                        if self.jump[1] < 0:
+                            self.rect.y -= 1
+                        else:
+                            self.rect.y += 1
+                        if not self.collision():
+                            self.jump[1] = 24
+                            break
+                    self.jump[1] += 1
 
-        y = self.rect.y + self.fall  # Падение
-        for j in range(self.fall):
-            self.rect.y += 1
-            self.collision()
-            if self.rect.bottom > HEIGHT - 23:
-                self.rect.bottom = HEIGHT - 23
-        if y == self.rect.y and not self.jump[0]:
-            self.fall += 1
-            self.is_flight = True
-        else:
-            self.fall = 5
-            self.is_flight = False
-        if self.jump[0]:
-            self.is_flight = True
-        coins = pygame.sprite.spritecollide(self, coins_sprites, True)
-        if coins:
-            game.coins += len(coins)
+            y = self.rect.y + self.fall  # Падение
+            for j in range(self.fall):
+                self.rect.y += 1
+                self.collision()
+                if self.rect.bottom > HEIGHT - 23:
+                    self.rect.bottom = HEIGHT - 23
+            if y == self.rect.y and not self.jump[0]:
+                self.fall += 1
+                self.is_flight = True
+            else:
+                self.fall = 5
+                self.is_flight = False
+            if self.jump[0]:
+                self.is_flight = True
+            coins = pygame.sprite.spritecollide(self, coins_sprites, True)
+            if coins:
+                game.coins += len(coins)
 
     def collision(self):
         platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
@@ -268,104 +281,128 @@ class Player(pygame.sprite.Sprite):
         return True
 
 
+class GameOver(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(game_over_sprite)
+        self.image = load_image('GameOver.png', (35, 90, 115))
+        self.rect = self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH // 2, HEIGHT // 2)
+
+
 class Enemy(Character):
     def __init__(self):
         super().__init__('Guard.png', ('Guard_run.png', (6, 1)), ('Guard_attack.png', (4, 3)))
-        self.rect.center = WIDTH // 2, HEIGHT - 23
         self.hp, self.speed = random.randrange(400, 700, 100), random.randrange(4, 6)
-        self.path, self.run = [], [0, 1, False]
-        self.timers.append(0)
+        self.path, self.run, self.alive = [], [0, 1, False], False
+        self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
+        self.timers = [0, 0, 0, 0]
+        self.rect.center = self.respawn
 
     def update(self):
-        cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
-        if self.timers[2] == 30:
-            self.timers[2] = 0
-            self.finding_path_1(visual_board.board, cell_player, cell_self)
-        self.timers[2] += 1
-        if cell_player[1] >= cell_self[1] and not self.jump[0] and not self.attack[0]:
-            if player.rect.right < self.rect.left and self.rect.left > 5:
-                self.rect.x -= self.speed
-                self.animation('run_left')
-            elif player.rect.left > self.rect.right and self.rect.right < WIDTH - 5:
-                self.rect.x += self.speed
-                self.animation('run_right')
-            elif not self.attack[0]:
-                self.image = self.image_stand
-                self.set_rect()
-        elif self.path and not self.attack[0]:
-            if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
-                    self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
-                try:
-                    if self.path[1][2] and self.path[1][0] > self.path[0][0]:
-                        coord = self.path[0][0] * 100 + 30
-                    elif self.path[1][2] and self.path[1][0] < self.path[0][0]:
-                        coord = self.path[0][0] * 100 + 80
-                    else:
-                        coord = self.path[0][0] * 100 + 50
-                except IndexError:
-                    coord = self.path[0][0] * 100 + 50
-                self.run = [coord, 1, False]
-                self.run[2] = self.path[0][2]
-            elif self.path[0][0] < cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
-                    self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
-                try:
-                    if self.path[1][2] and self.path[1][0] > self.path[0][0]:
-                        coord = self.path[0][0] * 100 + 30
-                    elif self.path[1][2] and self.path[1][0] < self.path[0][0]:
-                        coord = self.path[0][0] * 100 + 80
-                    else:
-                        coord = self.path[0][0] * 100 + 50
-                except IndexError:
-                    coord = self.path[0][0] * 100 + 50
-                self.run = [coord, -1, False]
-                self.run[2] = self.path[0][2]
-            if self.run[0] != 0:
-                if self.run[2] and not self.jump[0]:
-                    self.jump[0] = True
-                if self.run[2] and self.jump[1] <= -23:
-                    if self.jump[1] == -23:
-                        self.run[2] = False
-                else:
-                    if self.jump[0]:
-                        self.rect.x += 5 * self.run[1]
-                    else:
-                        self.rect.x += self.speed * self.run[1]
-                if (self.run[1] == 1 and self.run[0] <= self.rect.center[0]) or \
-                        (self.run[1] == -1 and self.run[0] >= self.rect.center[0]):
-                    self.run[0] = 0
-            if self.run[0] == 0 and not self.jump[0]:
-                del self.path[0]
-            if self.run[0] != 0:
-                if self.run[1] == -1:
+        if self.alive:
+            cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
+            if self.timers[2] == 30:
+                self.timers[2] = 0
+                self.finding_path_1(visual_board.board, cell_player, cell_self)
+            self.timers[2] += 1
+            if cell_player[1] >= cell_self[1] and not self.jump[0] and not self.attack[0]:
+                if player.rect.right < self.rect.left and self.rect.left > 5:
+                    self.rect.x -= self.speed
                     self.animation('run_left')
-                else:
+                elif player.rect.left > self.rect.right and self.rect.right < WIDTH - 5:
+                    self.rect.x += self.speed
                     self.animation('run_right')
-            else:
-                self.image = self.image_stand
-                self.set_rect()
-        if not self.jump[0] and not self.is_flight:
-            if self.rect.right > player.rect.center[0] > self.rect.left - 30 and cell_player[1] == cell_self[1]:
-                self.attack[0] = True
-                if self.cur_frame[1] == 7:
-                    self.animation('attack_left', random.choice([True, False]))
+                elif not self.attack[0]:
+                    self.image = self.image_stand
+                    self.set_rect()
+            elif self.path and not self.attack[0]:
+                if self.path[0][0] > cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
+                        self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
+                    try:
+                        if self.path[1][2] and self.path[1][0] > self.path[0][0]:
+                            coord = self.path[0][0] * 100 + 30
+                        elif self.path[1][2] and self.path[1][0] < self.path[0][0]:
+                            coord = self.path[0][0] * 100 + 80
+                        else:
+                            coord = self.path[0][0] * 100 + 50
+                    except IndexError:
+                        coord = self.path[0][0] * 100 + 50
+                    self.run = [coord, 1, False]
+                    self.run[2] = self.path[0][2]
+                elif self.path[0][0] < cell_self[0] and self.run[0] != self.path[0][0] * 100 + 50 and\
+                        self.run[0] != self.path[0][0] * 100 + 30 and self.run[0] != self.path[0][0] * 100 + 80:
+                    try:
+                        if self.path[1][2] and self.path[1][0] > self.path[0][0]:
+                            coord = self.path[0][0] * 100 + 30
+                        elif self.path[1][2] and self.path[1][0] < self.path[0][0]:
+                            coord = self.path[0][0] * 100 + 80
+                        else:
+                            coord = self.path[0][0] * 100 + 50
+                    except IndexError:
+                        coord = self.path[0][0] * 100 + 50
+                    self.run = [coord, -1, False]
+                    self.run[2] = self.path[0][2]
+                if self.run[0] != 0:
+                    if self.run[2] and not self.jump[0]:
+                        self.jump[0] = True
+                    if self.run[2] and self.jump[1] <= -23:
+                        if self.jump[1] == -23:
+                            self.run[2] = False
+                    else:
+                        if self.jump[0]:
+                            self.rect.x += 5 * self.run[1]
+                        else:
+                            self.rect.x += self.speed * self.run[1]
+                    if (self.run[1] == 1 and self.run[0] <= self.rect.center[0]) or \
+                            (self.run[1] == -1 and self.run[0] >= self.rect.center[0]):
+                        self.run[0] = 0
+                if self.run[0] == 0 and not self.jump[0]:
+                    del self.path[0]
+                if self.run[0] != 0:
+                    if self.run[1] == -1:
+                        self.animation('run_left')
+                    else:
+                        self.animation('run_right')
                 else:
-                    self.animation('attack_left')
-            elif self.rect.left < player.rect.center[0] < self.rect.right + 30 and cell_player[1] == cell_self[1]:
-                self.attack[0] = True
-                if self.cur_frame[1] == 7:
-                    self.animation('attack_right', random.choice([True, False]))
+                    self.image = self.image_stand
+                    self.set_rect()
+            if not self.jump[0] and not self.is_flight:
+                if self.rect.right > player.rect.center[0] > self.rect.left - 30 and cell_player[1] == cell_self[1]:
+                    self.attack[0] = True
+                    if self.cur_frame[1] == 7:
+                        self.animation('attack_left', random.choice([True, False]))
+                    else:
+                        self.animation('attack_left')
+                elif self.rect.left < player.rect.center[0] < self.rect.right + 30 and cell_player[1] == cell_self[1]:
+                    self.attack[0] = True
+                    if self.cur_frame[1] == 7:
+                        self.animation('attack_right', random.choice([True, False]))
+                    else:
+                        self.animation('attack_right')
                 else:
-                    self.animation('attack_right')
+                    self.attack = [False, False]
+                    self.timers[1] = 0
+                if self.cur_frame[1] in [3, 8] and self.attack[0] and not self.attack[1]:
+                    if self.rect.left - 35 < player.rect.right or self.rect.right + 35 > player.rect.left:
+                        player.hp -= 40
+                        self.attack[1] = True
+                elif self.cur_frame[1] not in [3, 8]:
+                    self.attack[1] = False
+            super().update()
+            hp_enemy.append([self.rect.x, self.rect.y - 15, self.hp // 15, 5])
+            if self.hp <= 0:
+                self.alive = False
+                self.rect.center, self.image, self.timers = self.respawn, self.image_stand, [0, 0, 0, 0]
+        else:
+            if self.timers[3] == 120:
+                if self.respawn[0] > 0:
+                    self.path.append([len(visual_board.board[0]) - 1, 6, False])
+                else:
+                    self.path.append([0, 6, False])
+                self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
+                self.alive = True
             else:
-                self.attack = [False, False]
-                self.timers[1] = 0
-            if self.cur_frame[1] in [3, 8] and self.attack[0] and not self.attack[1]:
-                if self.rect.left - 35 < player.rect.right or self.rect.right + 35 > player.rect.left:
-                    player.hp -= 40
-                    self.attack[1] = True
-            elif self.cur_frame[1] not in [3, 8]:
-                self.attack[1] = False
-        super().update()
+                self.timers[3] += 1
 
     def finding_path_1(self, board, cell_player, cell_self):
         if not player.is_flight and not player.jump[0] and not self.is_flight and not self.jump[0]:
@@ -498,16 +535,21 @@ class PotionStand(pygame.sprite.Sprite):
                 self.timer = 0
         if visual_board.get_coord(player.rect.center) == self.coord_cell and not self.invisibility:
             psw.invisibility = False
+            if game.coins >= self.prise:
+                psw_pay.invisibility = False
         else:
-            psw.invisibility = True
+            psw.invisibility, psw_pay.invisibility = True, True
 
 
 class PotionStandWindow(pygame.sprite.Sprite):
-    def __init__(self, coord_cell):
+    def __init__(self, image, coord_cell=None):
         super().__init__(invisible_sprites)
-        self.image = load_image('PotionStand_window.png', (35, 90, 115))
+        self.image = load_image(image, (35, 90, 115))
         self.rect = self.image.get_rect()
-        self.rect.center = (coord_cell[0] * 100 + 50, coord_cell[1] * 100 + 50)
+        if coord_cell is None:
+            self.rect.center = (-150, -50)
+        else:
+            self.rect.center = (coord_cell[0] * 100 + 50, coord_cell[1] * 100 + 50)
         self.coord_cell = coord_cell
         self.invisibility = True
 
@@ -515,7 +557,11 @@ class PotionStandWindow(pygame.sprite.Sprite):
         if self.invisibility:
             self.rect.center = (-150, -50)
         else:
-            self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 50)
+            if self.coord_cell is None:
+                self.rect.left = player.rect.right
+                self.rect.center = (self.rect.center[0], player.rect.center[1])
+            else:
+                self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 50)
 
 
 class Coin(pygame.sprite.Sprite):
@@ -639,6 +685,9 @@ if __name__ == '__main__':
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     foreground_sprites, background_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     coins_sprites, invisible_sprites = pygame.sprite.Group(), pygame.sprite.Group()
+    game_over_sprite = pygame.sprite.Group()
+    GameOver()
+    hp_enemy = []
     player = Player()
     for _ in range(1):
         Enemy()
@@ -648,5 +697,6 @@ if __name__ == '__main__':
                          Platform((6, 1)), Platform((7, 1)))
     foreground_sprites.add(Decor('foregroundPlant0.png', (639, 683)), Decor('Frame.png', (330, 35)),
                            Decor('Coin_pin.png', (29, 90)))
-    ps, psw = PotionStand([6, 6]), PotionStandWindow([6, 5])
+    ps, psw = PotionStand([6, 6]), PotionStandWindow('PotionStand_window.png', [6, 5])
+    psw_pay = PotionStandWindow('pay_window.png')
     game.game_run()
