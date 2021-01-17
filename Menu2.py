@@ -5,12 +5,14 @@ size = width, height = 1270, 750
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Меню')
 
+pygame.font.init()
 pygame.mixer.init()
 
-music_pleer = ['Музыка 3(в меню).mp3', 'Музыка 4.mp3', 'Музыка 1.mp3', 'Музыка 2.mp3']
+music_pleer = ['Музыка 3', 'Музыка 4', 'Музыка 1', 'Музыка 2']
 MUSICSOUND = 0
 
-pygame.mixer.music.load(music_pleer[MUSICSOUND])
+pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
+ACTUAL_SOUND = music_pleer[MUSICSOUND]
 pygame.mixer.music.set_volume(0.4)
 pygame.mixer.music.play(-1)
 
@@ -124,6 +126,7 @@ if __name__ == '__main__':
     music_sound = Main_menu("SOUND_PAUSE_FALSE.png", width - 90, -500, 26, 25)
     right_pleer = Main_menu("RIGHT_PLEER.png", width - 55, -500, 25, 25)
     left_pleer = Main_menu("LEFT_PLEER.png", width - 125, -500, 25, 25)
+    note = Main_menu("Нота.png", width - 250, -500, 25, 25)
 
     # настройки_фон
     background_fon = Options_background("Прозрачный фон.png", width, 0, 1280, 750)  # прозрачный фон
@@ -171,31 +174,6 @@ if __name__ == '__main__':
                 x, y = event.pos
                 if width // 2 - 130 < x < width // 2 + 115 and 320 < y < 390:
                     background_options = True
-                if width - 100 < x < width - 70 and 20 < y < 45:  # остановки и воспроизведение музыки
-                    if not SOUND_PAUSE:
-                        SOUND_PAUSE = True
-                        music_sound.rename("SOUND_PAUSE_TRUE.png")
-                        pygame.mixer.music.pause()
-                    else:
-                        SOUND_PAUSE = False
-                        music_sound.rename("SOUND_PAUSE_FALSE.png")
-                        pygame.mixer.music.unpause()
-                if width - 65 < x < width - 40 and 20 < y < 45:  # смена музыки вправо
-                    MUSICSOUND += 1
-                    if MUSICSOUND == 4:
-                        MUSICSOUND = 0
-                    pygame.mixer.music.load(music_pleer[MUSICSOUND])
-                    pygame.mixer.music.play(-1)
-                    if SOUND_PAUSE:
-                        pygame.mixer.music.pause()
-                if width - 135 < x < width - 105 and 20 < y < 45:  # смена музыки влево
-                    MUSICSOUND -= 1
-                    if MUSICSOUND == -1:
-                        MUSICSOUND = 3
-                    pygame.mixer.music.load(music_pleer[MUSICSOUND])
-                    pygame.mixer.music.play(-1)
-                    if SOUND_PAUSE:
-                        pygame.mixer.music.pause()
 
                 if background_options:
                     if 0 < x < 50 and height - 25 < y < height:  # закрытие настроек
@@ -257,6 +235,34 @@ if __name__ == '__main__':
                             ARROWS = True
                             WASD = False
                             options_control_arrows.rename("ARROWS.png")
+                else:
+                    if width - 100 < x < width - 70 and 20 < y < 45:  # остановки и воспроизведение музыки
+                        if not SOUND_PAUSE:
+                            SOUND_PAUSE = True
+                            music_sound.rename("SOUND_PAUSE_TRUE.png")
+                            pygame.mixer.music.pause()
+                        else:
+                            SOUND_PAUSE = False
+                            music_sound.rename("SOUND_PAUSE_FALSE.png")
+                            pygame.mixer.music.unpause()
+                    if width - 65 < x < width - 40 and 20 < y < 45:  # смена музыки вправо
+                        MUSICSOUND += 1
+                        if MUSICSOUND == 4:
+                            MUSICSOUND = 0
+                        pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
+                        ACTUAL_SOUND = music_pleer[MUSICSOUND]
+                        pygame.mixer.music.play(-1)
+                        if SOUND_PAUSE:
+                            pygame.mixer.music.pause()
+                    if width - 135 < x < width - 105 and 20 < y < 45:  # смена музыки влево
+                        MUSICSOUND -= 1
+                        if MUSICSOUND == -1:
+                            MUSICSOUND = 3
+                        ACTUAL_SOUND = music_pleer[MUSICSOUND]
+                        pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
+                        pygame.mixer.music.play(-1)
+                        if SOUND_PAUSE:
+                            pygame.mixer.music.pause()
 
         start.get_cords(200)
         options.get_cords(320)
@@ -265,9 +271,13 @@ if __name__ == '__main__':
         music_sound.get_cords(20)
         right_pleer.get_cords(20)
         left_pleer.get_cords(20)
+        note.get_cords(20)
 
         screen.blit(image11, (0, 0))
         all_sprites_main_menu.draw(screen)
+        font = pygame.font.Font(None, 25)
+        text = font.render(ACTUAL_SOUND.upper(), True, (255, 255, 255))
+        screen.blit(text, (1050, 25))
         all_Background_options.draw(screen)
 
         if background_options:
