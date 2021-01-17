@@ -8,7 +8,7 @@ pygame.display.set_caption('Меню')
 pygame.font.init()
 pygame.mixer.init()
 
-music_pleer = ['Музыка 3', 'Музыка 4', 'Музыка 1', 'Музыка 2']
+music_pleer = ['Музыка 1', 'Музыка 2', 'Музыка 3', 'Музыка 4']
 MUSICSOUND = 0
 
 pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
@@ -172,7 +172,7 @@ if __name__ == '__main__':
                     draw_sprite = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if width // 2 - 130 < x < width // 2 + 115 and 320 < y < 390:
+                if width // 2 - 130 < x < width // 2 + 115 and 320 < y < 390:  # открытие настрооек
                     background_options = True
 
                 if background_options:
@@ -226,7 +226,7 @@ if __name__ == '__main__':
                             HIT_J = True
                             hit_button.rename("HIT_J.png")
                     if (width // 4 + 160 < x < width // 4 + 190 and 120 < y < 145) or\
-                            (width // 4 - 25 < x < width // 4 + 5 and 120 < y < 145):
+                            (width // 4 - 25 < x < width // 4 + 5 and 120 < y < 145):  # смена управления
                         if ARROWS:
                             ARROWS = False
                             WASD = True
@@ -236,6 +236,8 @@ if __name__ == '__main__':
                             WASD = False
                             options_control_arrows.rename("ARROWS.png")
                 else:
+                    if width // 2 - 80 < x < width // 2 + 70 and 400 < y < 445:  # нажатие на кнопку выхода
+                        running = False
                     if width - 100 < x < width - 70 and 20 < y < 45:  # остановки и воспроизведение музыки
                         if not SOUND_PAUSE:
                             SOUND_PAUSE = True
@@ -280,7 +282,7 @@ if __name__ == '__main__':
         screen.blit(text, (1050, 25))
         all_Background_options.draw(screen)
 
-        if background_options:
+        if background_options:  # открытие настроек
             background_fon.get_left(0)
 
             optinons_control.get_left(width // 4 + 20)
@@ -302,7 +304,7 @@ if __name__ == '__main__':
             language_left.get_left(width // 4 + width // 4)
 
             back_main.get_left(0)
-        else:
+        else:  # закрытие настроек
             background_fon.get_right(width)
 
             optinons_control.get_right(width + width // 4)
