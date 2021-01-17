@@ -236,6 +236,8 @@ if __name__ == '__main__':
                             WASD = False
                             options_control_arrows.rename("ARROWS.png")
                 else:
+                    if width // 2 - 155 < x < width // 2 + 145 and 200 < y < 300:  # нажатие на кнопку старт
+                        pass
                     if width // 2 - 80 < x < width // 2 + 70 and 400 < y < 445:  # нажатие на кнопку выхода
                         running = False
                     if width - 100 < x < width - 70 and 20 < y < 45:  # остановки и воспроизведение музыки
