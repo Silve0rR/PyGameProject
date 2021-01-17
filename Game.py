@@ -1,6 +1,9 @@
 import pygame
 import os
 import random
+from Levels import get_level
+
+keys_sl = {'run': [pygame.K_a, pygame.K_d], 'jump': pygame.K_SPACE, 'attack': pygame.K_k, 'pay': pygame.K_e}
 
 WIDTH, HEIGHT = 1270, 720
 FPS = 60
@@ -30,10 +33,6 @@ class Game:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                coord = event.pos
-                for _ in range(random.randrange(1, 10)):
-                    Coin(*coord, random.choice([-1, 1]))
 
     def update(self):  # Обнавление
         character_sprites.update()
@@ -54,8 +53,12 @@ class Game:
         self.screen.blit(pygame.font.Font(None, 30).render(str(self.coins), True, (255, 255, 255)), (45, 83))
         self.screen.blit(pygame.font.Font(None, 35).render('Счёт: ' + str(self.account), True, (255, 255, 255)),
                          (WIDTH // 2 + 100, 20))
-        self.screen.blit(pygame.font.Font(None, 35).render(str((self.time // 60) // 60) + ':' + str(self.time // 60),
-                                                           True, (255, 255, 255)), (WIDTH // 2 + 500, 20))
+        time = str((self.time // 60) // 60) + ':'
+        if (self.time // 60) % 60 < 10:
+            time += '0' + str((self.time // 60) % 60)
+        else:
+            time += str((self.time // 60) % 60)
+        self.screen.blit(pygame.font.Font(None, 35).render(time, True, (255, 255, 255)), (WIDTH // 2 + 500, 20))
         if not psw.invisibility:
             self.screen.blit(pygame.font.Font(None, 25).render('Зелье', True,
                                                                (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 5))
@@ -198,24 +201,16 @@ class Character(pygame.sprite.Sprite):
         self.rect.center = center
 
 
-class Player(pygame.sprite.Sprite):
+class Player(Character):
     def __init__(self):
-        super().__init__(character_sprites)
-        self.image = load_image('Player.png', (35, 90, 115))
-        self.rect = self.image.get_rect()
+        super().__init__('Player.png', ('Player_run.png', (6, 1)), ('Player_attack.png', (4, 3)))
         self.rect.center = WIDTH // 2, HEIGHT // 2
-        self.fall, self.hp = 5, 1000
-        self.jump, self.is_flight = [False, -25], False
-        self.attack = [False, False]
+        self.hp, self.direction = 1000, 'right'
 
     def update(self):
         if self.hp > 0:
             keys = pygame.key.get_pressed()
-            if keys[pygame.K_a] and self.rect.left > 5:
-                self.rect.x -= 6
-            if keys[pygame.K_d] and self.rect.right < WIDTH - 5:
-                self.rect.x += 6
-            if keys[pygame.K_e]:
+            if keys[keys_sl['pay']]:
                 if visual_board.get_coord(self.rect.center) == ps.coord_cell and\
                         not ps.invisibility and game.coins >= ps.prise:
                     self.hp += ps.restoration
@@ -224,61 +219,44 @@ class Player(pygame.sprite.Sprite):
                     game.coins -= ps.prise
                     ps.uses += 1
                     ps.invisibility = True
-                else:
-                    pass
             if not self.jump[0] and not self.is_flight:
                 if keys[pygame.K_SPACE]:
                     self.jump[0] = True
-            elif self.jump[0]:
-                if self.jump[1] == 25:
-                    self.jump = [False, -25]
-                else:
-                    for _ in range(abs(self.jump[1])):
-                        if self.jump[1] < 0:
-                            self.rect.y -= 1
-                        else:
-                            self.rect.y += 1
-                        if not self.collision():
-                            self.jump[1] = 24
-                            break
-                    self.jump[1] += 1
-
-            y = self.rect.y + self.fall  # Падение
-            for j in range(self.fall):
-                self.rect.y += 1
-                self.collision()
-                if self.rect.bottom > HEIGHT - 23:
-                    self.rect.bottom = HEIGHT - 23
-            if y == self.rect.y and not self.jump[0]:
-                self.fall += 1
-                self.is_flight = True
-            else:
-                self.fall = 5
-                self.is_flight = False
-            if self.jump[0]:
-                self.is_flight = True
+            if not self.jump[0] and not self.is_flight:
+                if keys[keys_sl['attack']]:
+                    self.attack[0] = True
+                if self.attack[0]:
+                    self.animation('attack_' + self.direction)
+                if self.cur_frame[1] in [3, 8] and not self.attack[1]:
+                    global hit_enemy
+                    hit_enemy = pygame.sprite.spritecollide(self, character_sprites, False)
+                    self.attack[1] = True
+                elif self.cur_frame[1] not in [3, 8]:
+                    self.attack[1] = False
+                if self.cur_frame[1] == 11:
+                    self.attack = [False, False, False]
+                    self.cur_frame[1] = 0
+            if self.attack[0] and self.jump[0]:
+                self.attack[0] = False
+                self.cur_frame[1] = 0
+            if keys[keys_sl['run'][0]] and self.rect.left > 5:
+                self.rect.x -= 6
+                self.animation('run_left')
+                self.direction = 'left'
+            elif keys[keys_sl['run'][1]] and self.rect.right < WIDTH - 5:
+                self.rect.x += 6
+                self.animation('run_right')
+                self.direction = 'right'
+            elif not self.attack[0] and not self.jump[0] and not self.is_flight:
+                self.image = self.image_stand
+                self.set_rect()
+            super().update()
             coins = pygame.sprite.spritecollide(self, coins_sprites, True)
             if coins:
                 game.coins += len(coins)
-
-    def collision(self):
-        platforms = pygame.sprite.spritecollide(self, platform_sprites, False)
-        for pl in platforms:
-            if pl.rect.bottom >= self.rect.bottom >= pl.rect.top > self.rect.top:
-                self.rect.bottom = pl.rect.top
-                return False
-            elif pl.rect.top < self.rect.top < pl.rect.bottom < self.rect.bottom:
-                self.rect.top = pl.rect.bottom
-                return False
-            elif self.rect.top < pl.rect.top or self.rect.bottom > pl.rect.bottom:
-                if self.rect.right > pl.rect.left > self.rect.left:
-                    self.rect.right = pl.rect.left
-                elif self.rect.left < pl.rect.right < self.rect.right:
-                    self.rect.left = pl.rect.right
-                return True
-            else:
-                return True
-        return True
+        else:
+            pass
+            # анимация
 
 
 class GameOver(pygame.sprite.Sprite):
@@ -300,12 +278,18 @@ class Enemy(Character):
 
     def update(self):
         if self.alive:
+            global hit_enemy
+            for en in hit_enemy:
+                if en == self:
+                    self.hp -= random.randrange(100, 150)
+                    del hit_enemy[hit_enemy.index(en)]
+                    break
             cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
             if self.timers[2] == 30:
                 self.timers[2] = 0
                 self.finding_path_1(visual_board.board, cell_player, cell_self)
             self.timers[2] += 1
-            if cell_player[1] >= cell_self[1] and not self.jump[0] and not self.attack[0]:
+            if not self.path and not self.jump[0] and not self.attack[0]:
                 if player.rect.right < self.rect.left and self.rect.left > 5:
                     self.rect.x -= self.speed
                     self.animation('run_left')
@@ -343,7 +327,7 @@ class Enemy(Character):
                     self.run = [coord, -1, False]
                     self.run[2] = self.path[0][2]
                 if self.run[0] != 0:
-                    if self.run[2] and not self.jump[0]:
+                    if self.run[2] and not self.jump[0] and not self.is_flight:
                         self.jump[0] = True
                     if self.run[2] and self.jump[1] <= -23:
                         if self.jump[1] == -23:
@@ -366,7 +350,7 @@ class Enemy(Character):
                 else:
                     self.image = self.image_stand
                     self.set_rect()
-            if not self.jump[0] and not self.is_flight:
+            if not self.jump[0] and not self.is_flight and player.hp > 0:
                 if self.rect.right > player.rect.center[0] > self.rect.left - 30 and cell_player[1] == cell_self[1]:
                     self.attack[0] = True
                     if self.cur_frame[1] == 7:
@@ -384,7 +368,7 @@ class Enemy(Character):
                     self.timers[1] = 0
                 if self.cur_frame[1] in [3, 8] and self.attack[0] and not self.attack[1]:
                     if self.rect.left - 35 < player.rect.right or self.rect.right + 35 > player.rect.left:
-                        player.hp -= 40
+                        player.hp -= random.randrange(10, 25)
                         self.attack[1] = True
                 elif self.cur_frame[1] not in [3, 8]:
                     self.attack[1] = False
@@ -392,7 +376,12 @@ class Enemy(Character):
             hp_enemy.append([self.rect.x, self.rect.y - 15, self.hp // 15, 5])
             if self.hp <= 0:
                 self.alive = False
+                for _ in range(random.randrange(1, 5)):
+                    Coin(*self.rect.center)
                 self.rect.center, self.image, self.timers = self.respawn, self.image_stand, [0, 0, 0, 0]
+                self.hp = random.randrange(400, 700, 100)
+                game.account += random.randrange(10, 30)
+
         else:
             if self.timers[3] == 120:
                 if self.respawn[0] > 0:
@@ -405,96 +394,124 @@ class Enemy(Character):
                 self.timers[3] += 1
 
     def finding_path_1(self, board, cell_player, cell_self):
-        if not player.is_flight and not player.jump[0] and not self.is_flight and not self.jump[0]:
+        if not self.is_flight and not self.jump[0] and not player.is_flight and not player.jump[0]:
             board2 = []
-            for i in range(visual_board.height):
+            for i in range(len(board)):
                 board2.append([])
-                for j in range(visual_board.width):
+                for j in range(len(board[i])):
                     if board[i][j] == 0:
-                        board2[i].append([-1, ''])
+                        board2[i].append([[-1, '']])
                     elif board[i][j] == 1:
-                        board2[i].append([0, ''])
-            board2[-1] = [[0, ''] for _ in range(visual_board.width)]
-            board2[cell_self[1]][cell_self[0]] = [1, '1']
-            sp = self.finding_path_2(board2, cell_player)
-            if sp[0]:
-                self.save_path(sp[1], cell_player)
+                        board2[i].append([[0, '']])
+            board2[-1] = [[[0, '']] for _ in range(len(board[0]))]
+            board2[cell_self[1]][cell_self[0]].append([1, '1'])
+            board = self.finding_path_2(board2, cell_player, cell_self[0], cell_self[1], 2)
+            min_wave = [1000, 0]
+            for i in range(len(board[cell_player[1]][cell_player[0]])):
+                if board[cell_player[1]][cell_player[0]][i][0] != 0 and \
+                        board[cell_player[1]][cell_player[0]][i][0] < min_wave[0]:
+                    min_wave = [board[cell_player[1]][cell_player[0]][i][0], i]
+            self.save_path(board, cell_player, min_wave[1])
 
-    def finding_path_2(self, board, cell_player):
-        wave = 1
-        for _ in range(visual_board.height * visual_board.width):
-            wave += 1
-            for y in range(visual_board.height):
-                for x in range(visual_board.width):
-                    option = '1'
-                    if board[y][x][0] == wave - 1:
-                        if x + 1 < visual_board.width:
-                            if board[y][x + 1][0] == 0 or (board[y][x + 1][0] != -1 and board[y][x + 1][0] > wave):
-                                board[y][x + 1] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                        if x - 1 >= 0:
-                            if board[y][x - 1][0] == 0 or (board[y][x - 1][0] != -1 and board[y][x - 1][0] > wave):
-                                board[y][x - 1] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                        if x + 1 < visual_board.width and y - 2 >= 0:
-                            if (board[y - 1][x + 1][0] == 0 or (board[y - 1][x + 1][0] != -1 and  # 1
-                                                                board[y - 1][x + 1][0] > wave)) and\
-                                    board[y - 1][x][0] == board[y - 2][x][0] == board[y - 2][x + 1][0] == -1:
-                                board[y - 1][x + 1] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                            if (board[y - 2][x + 1][0] == 0 or (board[y - 2][x + 1][0] != -1 and  # 3
-                                                                board[y - 2][x + 1][0] > wave)) and y != 6 and \
-                                    board[y - 1][x][0] == board[y - 2][x][0] == -1:
-                                board[y - 2][x + 1] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                        if x + 2 < visual_board.width and y - 2 >= 0:
-                            if (board[y - 1][x + 2][0] == 0 or (board[y - 1][x + 2][0] != -1 and  # 2
-                                                                board[y - 1][x + 2][0] > wave)) and\
-                                    board[y - 1][x][0] == board[y - 2][x][0] == -1 and\
-                                    board[y - 2][x + 1][0] == board[y - 2][x + 2][0] == -1:
-                                board[y - 1][x + 2] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                        if x - 1 >= 0 and y - 2 >= 0:
-                            if (board[y - 1][x - 1][0] == 0 or (board[y - 1][x - 1][0] != -1 and  # 1
-                                                                board[y - 1][x - 1][0] > wave)) and\
-                                    board[y - 1][x][0] == board[y - 2][x][0] == board[y - 2][x - 1][0] == -1:
-                                board[y - 1][x - 1] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                            if (board[y - 2][x - 1][0] == 0 or (board[y - 2][x - 1][0] != -1 and  # 3
-                                                                board[y - 2][x - 1][0] > wave)) and y != 6 and \
-                                    board[y - 1][x][0] == board[y - 2][x][0] == -1:
-                                board[y - 2][x - 1] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
-                        if x - 2 >= 0 and y - 2 >= 0:
-                            if (board[y - 1][x - 2][0] == 0 or (board[y - 1][x - 2][0] != -1 and  # 2
-                                                                board[y - 1][x - 2][0] > wave)) and\
-                                    board[y - 1][x][0] == board[y - 2][x][0] == -1 and\
-                                    board[y - 2][x - 1][0] == board[y - 2][x - 2][0] == -1:
-                                board[y - 1][x - 2] = [wave, board[y][x][1] + option]
-                                option = str(int(option) + 1)
+    def finding_path_2(self, board, cell_player, x, y, wave):
+        option = '1'
+        if wave <= 10:
+            try:
+                if y == cell_player[1] and x == cell_player[0]:
+                    board[y][x].append([wave, board[y][x][-1][1] + option])
+                    return board
+                if x + 1 < 13:
+                    if board[y][x + 1][0][0] == 0 and self.past_action(board, x + 1, y, board[y][x][-1][1] + option):
+                        board[y][x + 1].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x + 1, y, wave + 1)
+                    if y + 1 < 7:
+                        if board[y + 1][x + 1][0][0] == 0 and\
+                                self.past_action(board, x + 1, y + 1, board[y][x][-1][1] + option) and\
+                                board[y][x + 1] == -1:
+                            board[y + 1][x + 1].append([wave, board[y][x][-1][1] + option])
+                            option = str(int(option) + 1)
+                            board = self.finding_path_2(board, cell_player, x + 1, y + 1, wave + 1)
+                if x - 1 >= 0:
+                    if board[y][x - 1][0][0] == 0 and self.past_action(board, x - 1, y, board[y][x][-1][1] + option):
+                        board[y][x - 1].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x - 1, y, wave + 1)
+                    if y + 1 < 7:
+                        if board[y + 1][x - 1][0][0] == 0 and \
+                                self.past_action(board, x - 1, y + 1, board[y][x][-1][1] + option) and\
+                                board[y][x - 1] == -1:
+                            board[y + 1][x - 1].append([wave, board[y][x][-1][1] + option])
+                            option = str(int(option) + 1)
+                            board = self.finding_path_2(board, cell_player, x - 1, y + 1, wave + 1)
+                if x + 1 < 13 and y - 2 >= 0:
+                    if board[y - 1][x + 1][0][0] == 0 and\
+                            self.past_action(board, x + 1, y - 1, board[y][x][-1][1] + option) and\
+                            board[y - 1][x][0][0] == -1:
+                        board[y - 1][x + 1].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x + 1, y - 1, wave + 1)
+                    if board[y - 2][x + 1][0][0] == 0 and\
+                            self.past_action(board, x + 1, y - 2, board[y][x][-1][1] + option) and\
+                            y != 6 and board[y - 1][x][0][0] == board[y - 2][x][0][0] == -1:
+                        board[y - 2][x + 1].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x + 1, y - 2, wave + 1)
+                if x + 2 < 13 and y - 2 >= 0:
+                    if board[y - 1][x + 2][0][0] == 0 and\
+                            self.past_action(board, x + 2, y - 1, board[y][x][-1][1] + option) and\
+                            board[y - 1][x][0] == board[y - 2][x][0] == -1 and\
+                            board[y - 2][x + 1][0][0] == board[y - 2][x + 2][0][0] == -1:
+                        board[y - 1][x + 2].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x + 2, y - 1, wave + 1)
+                if x - 1 >= 0 and y - 2 >= 0:
+                    if board[y - 1][x - 1][0][0] == 0 and\
+                            self.past_action(board, x - 1, y - 1, board[y][x][-1][1] + option) and \
+                            board[y - 1][x][0][0] == -1:
+                        board[y - 1][x - 1].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x - 1, y - 1, wave + 1)
+                    if board[y - 2][x - 1][0][0] == 0 and\
+                            self.past_action(board, x - 1, y - 2, board[y][x][-1][1] + option) and\
+                            y != 6 and board[y - 1][x][0][0] == board[y - 2][x][0][0] == -1:
+                        board[y - 2][x - 1].append([wave, board[y][x][-1][1] + option])
+                        option = str(int(option) + 1)
+                        board = self.finding_path_2(board, cell_player, x - 1, y - 2, wave + 1)
+                if x - 2 >= 0 and y - 2 >= 0:
+                    if board[y - 1][x - 2][0][0] == 0 and\
+                            self.past_action(board, x - 2, y - 1, board[y][x][-1][1] + option) and \
+                            board[y - 1][x][0][0] == board[y - 2][x][0][0] == -1 and\
+                            board[y - 2][x - 1][0][0] == board[y - 2][x - 2][0][0] == -1:
+                        board[y - 1][x - 2].append([wave, board[y][x][-1][1] + option])
+                        board = self.finding_path_2(board, cell_player, x - 2, y - 1, wave + 1)
+            except TypeError:
+                pass
+        return board
 
-                        if y == cell_player[1] and x == cell_player[0]:
-                            board[y][x] = [wave, board[y][x][1] + option]
-                            return [True, board]
+    def past_action(self, board, x, y, cod):
+        for option in board[y][x]:
+            if option[0] != 0 and option[1] == cod[:len(option[1])]:
+                return False
+        return True
 
-        return [False, []]
-
-    def save_path(self, board, cell_player):
-        wave, cod_cell = board[cell_player[1]][cell_player[0]][0], board[cell_player[1]][cell_player[0]][1]
+    def save_path(self, board, cell_player, ind):
         self.path = []
+        wave, cod_cell = board[cell_player[1]][cell_player[0]][ind][0], board[cell_player[1]][cell_player[0]][ind][1]
         self.path.append([*cell_player, False])
         for ind in range(-1, -len(cod_cell), -1):
             wave -= 1
             cod = cod_cell[:ind]
             for y in range(visual_board.height):
                 for x in range(visual_board.width):
-                    if board[y][x] == [wave, cod]:
-                        self.path.append([x, y, False])
-                        try:
-                            if self.path[-2][1] < y:
-                                self.path[-2][2] = True
-                        except IndexError:
-                            pass
+                    for option in board[y][x]:
+                        if option == [wave, cod]:
+                            self.path.append([x, y, False])
+                            try:
+                                if self.path[-2][1] < y:
+                                    self.path[-2][2] = True
+                            except IndexError:
+                                pass
         self.path = self.path[::-1]
         del self.path[0]
 
@@ -523,7 +540,10 @@ class PotionStand(pygame.sprite.Sprite):
         if self.invisibility and self.rect.center != (-100, -100):
             self.rect.center = (-100, -100)
         elif not self.invisibility and self.rect.center == (-100, -100):
-            self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 47)
+            if visual_board.board[self.coord_cell[1]][self.coord_cell[0]] == 1:
+                self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 20)
+            else:
+                self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 47)
             self.restoration = random.randrange(200, 500, 100)
             self.prise = (self.restoration // 100) * 5 + game.wave * 2 + self.uses * 3
         if not self.invisibility:
@@ -565,7 +585,7 @@ class PotionStandWindow(pygame.sprite.Sprite):
 
 
 class Coin(pygame.sprite.Sprite):
-    def __init__(self, x, y, direction):
+    def __init__(self, x, y):
         super().__init__(coins_sprites)
         self.frames_sl, self.cur_frame = load_frames_sl((('Coin.png', (3, 2)), ('Coin_flight.png', (5, 3))), True)
         self.image = self.frames_sl['coin'][0]
@@ -573,7 +593,7 @@ class Coin(pygame.sprite.Sprite):
         self.rect.center = (x, y)
         self.timers, self.is_flight = [240, 0], True
         self.fall = random.randrange(-15, -2)
-        self.speed = random.randrange(1, 5) * direction
+        self.speed = random.randrange(1, 5) * random.choice([-1, 1])
 
     def update(self):
         if self.is_flight:
@@ -670,7 +690,7 @@ def load_frames_sl(image_names_sizes, coin=False):
 
 def load_image(name, color_key=None):
     try:
-        image = pygame.image.load(os.path.join('image', name))
+        image = pygame.image.load(os.path.join('image', name)).convert()
     except pygame.error as message:
         print('Cannot load image:', name)
         raise SystemExit(message)
@@ -682,21 +702,22 @@ def load_image(name, color_key=None):
 if __name__ == '__main__':
     game = Game()
     visual_board = VisualBoard()
+    print(visual_board.width, visual_board.height)
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     foreground_sprites, background_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     coins_sprites, invisible_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     game_over_sprite = pygame.sprite.Group()
     GameOver()
-    hp_enemy = []
+    hp_enemy, hit_enemy = [], []
     player = Player()
     for _ in range(1):
         Enemy()
-    platform_sprites.add(Platform((2, 5)), Platform((3, 5)), Platform((4, 5)), Platform((6, 4)), Platform((7, 4)),
-                         Platform((8, 2)), Platform((0, 1)), Platform((1, 1)), Platform((2, 2)), Platform((3, 3)),
-                         Platform((4, 3)), Platform((9, 5)), Platform((10, 5)), Platform((4, 1)), Platform((5, 1)),
-                         Platform((6, 1)), Platform((7, 1)))
+    level = get_level()
+    ps, psw = PotionStand(level[-1]), PotionStandWindow('PotionStand_window.png', [level[-1][0], level[-1][1] - 1])
+    psw_pay = PotionStandWindow('pay_window.png')
+    del level[-1]
+    for coord_pl in level:
+        platform_sprites.add(Platform(coord_pl))
     foreground_sprites.add(Decor('foregroundPlant0.png', (639, 683)), Decor('Frame.png', (330, 35)),
                            Decor('Coin_pin.png', (29, 90)))
-    ps, psw = PotionStand([6, 6]), PotionStandWindow('PotionStand_window.png', [6, 5])
-    psw_pay = PotionStandWindow('pay_window.png')
     game.game_run()
