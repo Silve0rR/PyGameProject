@@ -26,7 +26,8 @@ class Game:
             self.events()
             self.update()
             self.visualization()
-            self.time += 1
+            if player.hp >= 0:
+                self.time += 1
             pygame.display.flip()
             alive = 0
             for en in character_sprites:
@@ -38,7 +39,6 @@ class Game:
                 self.wave += 1
                 self.enemy = 5 + self.wave
             if self.break_game[1] != 0:
-                print(self.break_game[1])
                 self.break_game[1] -= 1
             else:
                 self.break_game[0] = False
@@ -64,7 +64,8 @@ class Game:
         coins_sprites.draw(self.screen)
         character_sprites.draw(self.screen)
         platform_sprites.draw(self.screen)
-        pygame.draw.rect(self.screen, 'red', [127, 15, player.hp // 2, 35], 0)
+        if player.hp > 0:
+            pygame.draw.rect(self.screen, 'red', [127, 15, player.hp // 2, 35], 0)
         foreground_sprites.draw(self.screen)
         self.screen.blit(pygame.font.Font(None, 30).render(str(self.coins), True, (255, 255, 255)), (45, 83))
         self.screen.blit(pygame.font.Font(None, 35).render('Счёт: ' + str(self.account), True, (255, 255, 255)),
@@ -117,14 +118,14 @@ class VisualBoard:
 
 
 class Character(pygame.sprite.Sprite):
-    def __init__(self, im_stand, im_size_run, im_size_attack):
+    def __init__(self, im_stand, im_size_run, im_size_attack, im_size_rip):
         super().__init__(character_sprites)
         self.image_stand = load_image(im_stand, (35, 90, 115))
         self.image = self.image_stand
-        self.frames_sl, self.cur_frame = load_frames_sl((im_size_run, im_size_attack))
+        self.frames_sl, self.cur_frame = load_frames_sl((im_size_run, im_size_attack, im_size_rip))
         self.hp, self.rect = 1, self.image.get_rect()
-        self.jump, self.is_flight, self.fall, self.timers = [False, -25], False, 5, [0, 0]
-        self.attack = [False, False]
+        self.jump, self.is_flight, self.fall, self.timers = [False, -25], False, 5, [0, 0, 0]
+        self.attack, self.alive = [False, False], False
 
     def update(self):
         self.char_jump()
@@ -146,7 +147,7 @@ class Character(pygame.sprite.Sprite):
             self.is_flight = True
         col_char = pygame.sprite.spritecollide(self, character_sprites, False)
         for char in col_char:
-            if self != char:
+            if self != char and self != player and player != char and self.alive:
                 if self.rect.center[0] + 5 >= char.rect.center[0] >= self.rect.center[0] and\
                         self.rect.y == char.rect.y:
                     self.rect.x -= 3
@@ -210,6 +211,16 @@ class Character(pygame.sprite.Sprite):
             self.timers[1] += 1
             if self.timers[1] == 5:
                 self.timers[1] = 0
+        elif key[:key.index('_')] == 'rip':
+            if self.timers[2] == 9:
+                if self.cur_frame[2] != 5:
+                    self.cur_frame[2] = (self.cur_frame[2] + 1) % len(self.frames_sl[key])
+                self.image = self.frames_sl[key][self.cur_frame[2]]
+                self.set_rect()
+            if self.cur_frame[2] != 5:
+                self.timers[2] += 1
+                if self.timers[2] == 10:
+                    self.timers[2] = 0
 
     def set_rect(self):
         center = self.rect.center
@@ -219,9 +230,10 @@ class Character(pygame.sprite.Sprite):
 
 class Player(Character):
     def __init__(self):
-        super().__init__('Player.png', ('Player_run.png', (6, 1)), ('Player_attack.png', (4, 3)))
+        super().__init__('Player.png', ('Player_run.png', (6, 1)), ('Player_attack.png', (4, 3)),
+                         ('Player_rip.png', (6, 1)))
         self.rect.center = WIDTH // 2, HEIGHT // 2
-        self.hp, self.direction = 1000, 'right'
+        self.hp, self.direction = 100, 'right'
 
     def update(self):
         if self.hp > 0:
@@ -258,11 +270,11 @@ class Player(Character):
             if keys[keys_sl['run'][0]] and self.rect.left > 5:
                 self.rect.x -= 6
                 self.animation('run_left')
-                self.direction = 'left'
+                self.direction, self.attack[0], self.cur_frame[1] = 'left', False, 0
             elif keys[keys_sl['run'][1]] and self.rect.right < WIDTH - 5:
                 self.rect.x += 6
                 self.animation('run_right')
-                self.direction = 'right'
+                self.direction, self.attack[0], self.cur_frame[1] = 'right', False, 0
             elif not self.attack[0] and not self.jump[0] and not self.is_flight:
                 self.image = self.image_stand
                 self.set_rect()
@@ -274,8 +286,7 @@ class Player(Character):
                     coins_sprites.remove(coin)
                     game.coins += 1
         else:
-            pass
-            # анимация
+            self.animation('rip_' + self.direction)
 
 
 class GameOver(pygame.sprite.Sprite):
@@ -288,11 +299,12 @@ class GameOver(pygame.sprite.Sprite):
 
 class Enemy(Character):
     def __init__(self):
-        super().__init__('Guard.png', ('Guard_run.png', (6, 1)), ('Guard_attack.png', (4, 3)))
+        super().__init__('Guard.png', ('Guard_run.png', (6, 1)), ('Guard_attack.png', (4, 3)),
+                         ('Player_rip.png', (6, 1)))
         self.hp, self.speed = random.randrange(400, 700, 100), random.randrange(4, 6)
-        self.path, self.run, self.alive = [], [0, 1, False], False
+        self.path, self.run = [], [0, 1, False]
         self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
-        self.timers = [0, 0, 0, 0]
+        self.timers = [0, 0, 0, 0, 0]
         self.rect.center = self.respawn
         self.time_respawn = random.randrange(120, 600)
 
@@ -305,10 +317,10 @@ class Enemy(Character):
                     del hit_enemy[hit_enemy.index(en)]
                     break
             cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
-            if self.timers[2] == 30:
-                self.timers[2] = 0
+            if self.timers[3] == 30:
+                self.timers[3] = 0
                 self.finding_path_1(visual_board.board, cell_player, cell_self)
-            self.timers[2] += 1
+            self.timers[3] += 1
             if not self.path and not self.jump[0] and not self.attack[0]:
                 if player.rect.right < self.rect.left and self.rect.left > 5:
                     self.rect.x -= self.speed
@@ -392,13 +404,16 @@ class Enemy(Character):
                         self.attack[1] = True
                 elif self.cur_frame[1] not in [3, 8]:
                     self.attack[1] = False
+            elif not self.path:
+                self.image = self.image_stand
+                self.set_rect()
             super().update()
             hp_enemy.append([self.rect.x, self.rect.y - 15, self.hp // 15, 5])
             if self.hp <= 0:
                 self.alive = False
-                for _ in range(random.randrange(1, 5)):
+                for _ in range(random.randrange(3, 7)):
                     Coin(*self.rect.center)
-                self.rect.center, self.image, self.timers = self.respawn, self.image_stand, [0, 0, 0, 0]
+                self.timers = [0, 0, 0, 0, 0]
                 self.hp = random.randrange(400, 700, 100)
                 game.account += random.randrange(10, 30)
                 self.time_respawn = random.randrange(120, 600)
@@ -409,7 +424,15 @@ class Enemy(Character):
             for en in character_sprites:
                 if en != player and en.alive:
                     alive += 1
-            if self.timers[3] == self.time_respawn and game.enemy - alive > 0:
+            if self.timers[4] < 60:
+                if player.rect.center[0] > self.rect.center[0]:
+                    self.animation('rip_right')
+                else:
+                    self.animation('rip_left')
+                super().update()
+            if self.timers[4] == self.time_respawn and game.enemy - alive > 0:
+                self.cur_frame[2] = 0
+                self.rect.center = self.respawn
                 if self.respawn[0] > 0:
                     self.path.append([len(visual_board.board[0]) - 1, 6, False])
                 else:
@@ -417,7 +440,7 @@ class Enemy(Character):
                 self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
                 self.alive = True
             elif not game.break_game[0] and game.enemy - alive > 0:
-                self.timers[3] += 1
+                self.timers[4] += 1
 
     def finding_path_1(self, board, cell_player, cell_self):
         if not self.is_flight and not self.jump[0] and not player.is_flight and not player.jump[0]:
@@ -729,7 +752,6 @@ def load_image(name, color_key=None):
 if __name__ == '__main__':
     game = Game()
     visual_board = VisualBoard()
-    print(visual_board.width, visual_board.height)
     character_sprites, platform_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     foreground_sprites, background_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     coins_sprites, invisible_sprites = pygame.sprite.Group(), pygame.sprite.Group()
