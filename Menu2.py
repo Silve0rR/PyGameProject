@@ -154,7 +154,7 @@ def game_cycle():
     language_left = Options_background("arrow_left.png", width + width // 4 + width // 4, 120, 25, 25)
 
     # возвращение в главное меню
-    back_main = Options_background("BACK_RUSSIA.png", width + 50, height - 25, 50, 25)
+    back_main = Options_background("BACK_RUSSIA.png", width + 50, height - 55, 50, 25)
 
     running, draw_sprite = True, False
 
@@ -176,7 +176,7 @@ def game_cycle():
                     background_options = True
 
                 if background_options:
-                    if 0 < x < 50 and height - 25 < y < height:  # закрытие настроек
+                    if 0 < x < 45 and height - 55 < y < height:  # закрытие настроек
                         background_options = False
 
                     if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or \
@@ -192,6 +192,8 @@ def game_cycle():
 
                             options_JUMP.rename("JUMP_ENGLISH.png")
 
+                            options_hit.rename("HIT_ENGLISH.png")
+
                             option_languages.rename("LANGUAGES_ENGLISH.png")
                             languages_sprite.rename("LANG_ENGLISH.png")
 
@@ -206,6 +208,8 @@ def game_cycle():
                             optinons_control.rename("CONTROL_RUSSIA.png")
 
                             options_JUMP.rename("JUMP_RUSSIA.png")
+
+                            options_hit.rename("HIT_RUSSIA.png")
 
                             option_languages.rename("LANGUAGES_RUSSIA.png")
                             languages_sprite.rename("LANG_RUSSIA.png")
