@@ -2,8 +2,10 @@ import pygame
 import os
 import random
 from Levels import get_level
+from Menu2 import game_cycle, RUSSIA
 
 keys_sl = {'run': [pygame.K_a, pygame.K_d], 'jump': pygame.K_SPACE, 'attack': pygame.K_k, 'pay': pygame.K_e}
+language = {'RUSSIA': ['Счёт', 'Зелье', 'Цена', 'Купить'], 'ENGLISH': ['Account', 'Potion', 'Price', 'Pay']}
 
 WIDTH, HEIGHT = 1270, 720
 FPS = 60
@@ -68,7 +70,11 @@ class Game:
             pygame.draw.rect(self.screen, 'red', [127, 15, player.hp // 2, 35], 0)
         foreground_sprites.draw(self.screen)
         self.screen.blit(pygame.font.Font(None, 30).render(str(self.coins), True, (255, 255, 255)), (45, 83))
-        self.screen.blit(pygame.font.Font(None, 35).render('Счёт: ' + str(self.account), True, (255, 255, 255)),
+        if RUSSIA:
+            lang = language['RUSSIA']
+        else:
+            lang = language['ENGLISH']
+        self.screen.blit(pygame.font.Font(None, 35).render(lang[0] + ': ' + str(self.account), True, (255, 255, 255)),
                          (WIDTH // 2 + 100, 20))
         time = str((self.time // 60) // 60) + ':'
         if (self.time // 60) % 60 < 10:
@@ -77,14 +83,14 @@ class Game:
             time += str((self.time // 60) % 60)
         self.screen.blit(pygame.font.Font(None, 35).render(time, True, (255, 255, 255)), (WIDTH // 2 + 500, 20))
         if not psw.invisibility:
-            self.screen.blit(pygame.font.Font(None, 25).render('Зелье', True,
+            self.screen.blit(pygame.font.Font(None, 25).render(lang[1], True,
                                                                (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 5))
             self.screen.blit(pygame.font.Font(None, 20).render('+' + str(ps.restoration) + 'HP', True,
                                                                (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 25))
-            self.screen.blit(pygame.font.Font(None, 20).render('Цена: ' + str(ps.prise), True,
+            self.screen.blit(pygame.font.Font(None, 20).render(lang[2] + ': ' + str(ps.prise), True,
                                                                (0, 0, 0)), (psw.rect.x + 5, psw.rect.y + 50))
         if not psw_pay.invisibility:
-            self.screen.blit(pygame.font.Font(None, 15).render('Купить', True, (0, 0, 0)),
+            self.screen.blit(pygame.font.Font(None, 15).render(lang[3], True, (0, 0, 0)),
                              (psw_pay.rect.center[0] - 9, psw_pay.rect.center[1] - 4))
 
         # visual_board.render(self.screen)
@@ -316,7 +322,8 @@ class Enemy(Character):
                     self.hp -= random.randrange(100, 150)
                     del hit_enemy[hit_enemy.index(en)]
                     break
-            cell_player, cell_self = visual_board.get_coord(player.rect.center), visual_board.get_coord(self.rect.center)
+            cell_player = visual_board.get_coord(player.rect.center)
+            cell_self = visual_board.get_coord(self.rect.center)
             if self.timers[3] == 30:
                 self.timers[3] = 0
                 self.finding_path_1(visual_board.board, cell_player, cell_self)
@@ -769,4 +776,5 @@ if __name__ == '__main__':
         platform_sprites.add(Platform(coord_pl))
     foreground_sprites.add(Decor('foregroundPlant0.png', (639, 683)), Decor('Frame.png', (330, 35)),
                            Decor('Coin_pin.png', (29, 90)))
-    game.game_run()
+    if game_cycle():
+        game.game_run()

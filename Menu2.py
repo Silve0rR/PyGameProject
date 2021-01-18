@@ -4,44 +4,12 @@ import os
 size = width, height = 1270, 750
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Меню')
-
 pygame.font.init()
 pygame.mixer.init()
 
-music_pleer = ['Музыка 1', 'Музыка 2', 'Музыка 3', 'Музыка 4']
-MUSICSOUND = 0
-
-pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
-ACTUAL_SOUND = music_pleer[MUSICSOUND]
-pygame.mixer.music.set_volume(0.4)
-pygame.mixer.music.play(-1)
-
-SOUND_PAUSE = False
-
-RUSSIA = True
-ENGLISH = False
-
-ARROWS = True
-WASD = False
-
-HIT_J = True
-HIT_K = False
-HIT_L = False
-
-
-class Cur(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__(all_cur)
-        self.image = load_image("cur.png")  # загружает спрайт
-        self.image = pygame.transform.scale(self.image, (50, 50))
-        self.rect = self.image.get_rect()
-
-    def get_coords(self, coords):
-        self.rect.x, self.rect.y = coords
-
 
 def load_image(name, color_key=None):
-    fullname = os.path.join('data', name)
+    fullname = os.path.join('image', name)
     try:
         image = pygame.image.load(fullname)
     except pygame.error as message:
@@ -57,6 +25,45 @@ def load_image(name, color_key=None):
         image = image.convert_alpha()
 
     return image
+
+
+music_pleer = ['Музыка 1', 'Музыка 2', 'Музыка 3', 'Музыка 4']
+MUSICSOUND = 0
+
+pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
+ACTUAL_SOUND = music_pleer[MUSICSOUND]
+pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.play(-1)
+
+SOUND_PAUSE = False
+
+RUSSIA = False
+ENGLISH = True
+
+ARROWS = True
+WASD = False
+
+HIT_J = True
+HIT_K = False
+HIT_L = False
+
+all_Background_options = pygame.sprite.Group()  # настройки
+all_sprites_main_menu = pygame.sprite.Group()  # кнопки: Старт, Настройки, Выход
+all_cur = pygame.sprite.Group()  # курсор
+
+image1 = load_image("FON1.jpg")  # загрузка фона
+image11 = pygame.transform.scale(image1, (1280, 750))
+
+
+class Cur(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(all_cur)
+        self.image = load_image("cur.png")  # загружает спрайт
+        self.image = pygame.transform.scale(self.image, (50, 50))
+        self.rect = self.image.get_rect()
+
+    def get_coords(self, coords):
+        self.rect.x, self.rect.y = coords
 
 
 class Main_menu(pygame.sprite.Sprite):
@@ -107,16 +114,9 @@ class Options_background(pygame.sprite.Sprite):  # настройки
         self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
 
 
-all_Background_options = pygame.sprite.Group()  # настройки
-all_sprites_main_menu = pygame.sprite.Group()  # кнопки: Старт, Настройки, Выход
-all_cur = pygame.sprite.Group()  # курсор
-
-image1 = load_image("FON1.jpg")  # загрузка фона
-image11 = pygame.transform.scale(image1, (1280, 750))
-
-if __name__ == '__main__':
+def game_cycle():
+    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND
     cur = Cur()
-
     # меню
     start = Main_menu("START_RUSSIA.png", width // 2 - 150, -500, 300, 100)  # кнопка Старт(Start)
     options = Main_menu("OPTIONS_RUSSIA.png", width // 2 - 125, -300, 250, 70)  # кнопка Настройки(Options)
@@ -179,7 +179,7 @@ if __name__ == '__main__':
                     if 0 < x < 50 and height - 25 < y < height:  # закрытие настроек
                         background_options = False
 
-                    if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or\
+                    if (width // 4 + width // 4 + 150 < x < width // 4 + width // 4 + 180 and 120 < y < 145) or \
                             (width // 4 + width // 4 - 15 < x < width // 4 + width // 4 + 10 and 120 < y < 145):  # язык
                         if not ENGLISH:
                             RUSSIA = False
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                             languages_sprite.rename("LANG_RUSSIA.png")
 
                             back_main.rename("BACK_RUSSIA.png")
-                    if (width // 4 + 120 < x < width // 4 + 155 and 375 < y < 400) or\
+                    if (width // 4 + 120 < x < width // 4 + 155 and 375 < y < 400) or \
                             (width // 4 + 20 < x < width // 4 + 45 and 375 < y < 400):  # смена кнопки удара
                         if HIT_J:
                             HIT_J = False
@@ -225,7 +225,7 @@ if __name__ == '__main__':
                             HIT_L = False
                             HIT_J = True
                             hit_button.rename("HIT_J.png")
-                    if (width // 4 + 160 < x < width // 4 + 190 and 120 < y < 145) or\
+                    if (width // 4 + 160 < x < width // 4 + 190 and 120 < y < 145) or \
                             (width // 4 - 25 < x < width // 4 + 5 and 120 < y < 145):  # смена управления
                         if ARROWS:
                             ARROWS = False
@@ -237,7 +237,7 @@ if __name__ == '__main__':
                             options_control_arrows.rename("ARROWS.png")
                 else:
                     if width // 2 - 155 < x < width // 2 + 145 and 200 < y < 300:  # нажатие на кнопку старт
-                        pass
+                        return True
                     if width // 2 - 80 < x < width // 2 + 70 and 400 < y < 445:  # нажатие на кнопку выхода
                         running = False
                     if width - 100 < x < width - 70 and 20 < y < 45:  # остановки и воспроизведение музыки
