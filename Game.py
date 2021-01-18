@@ -16,7 +16,8 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.bg = load_image('background.jpg')
         self.coins, self.account, self.time = 0, 0, 0
-        self.wave = 1
+        self.wave, self.timers = 1, [0]
+        self.enemy, self.break_game = 5 + self.wave, [False, 0]
         self.running = True
 
     def game_run(self):
@@ -27,6 +28,21 @@ class Game:
             self.visualization()
             self.time += 1
             pygame.display.flip()
+            alive = 0
+            for en in character_sprites:
+                if en != player and en.alive:
+                    alive += 1
+            if self.enemy == 0 and alive == 0:
+                self.break_game = [True, 420]
+                ps.invisibility = False
+                self.wave += 1
+                self.enemy = 5 + self.wave
+            if self.break_game[1] != 0:
+                print(self.break_game[1])
+                self.break_game[1] -= 1
+            else:
+                self.break_game[0] = False
+                ps.invisibility = True
         pygame.quit()
 
     def events(self):  # События
@@ -212,13 +228,13 @@ class Player(Character):
             keys = pygame.key.get_pressed()
             if keys[keys_sl['pay']]:
                 if visual_board.get_coord(self.rect.center) == ps.coord_cell and\
-                        not ps.invisibility and game.coins >= ps.prise:
+                        not ps.invisibility and game.coins >= ps.prise and not ps.uses[1]:
                     self.hp += ps.restoration
                     if self.hp > 1000:
                         self.hp = 1000
                     game.coins -= ps.prise
-                    ps.uses += 1
-                    ps.invisibility = True
+                    ps.uses[0] += 1
+                    ps.uses[1] = True
             if not self.jump[0] and not self.is_flight:
                 if keys[pygame.K_SPACE]:
                     self.jump[0] = True
@@ -251,9 +267,12 @@ class Player(Character):
                 self.image = self.image_stand
                 self.set_rect()
             super().update()
-            coins = pygame.sprite.spritecollide(self, coins_sprites, True)
-            if coins:
-                game.coins += len(coins)
+            coins = pygame.sprite.spritecollide(self, coins_sprites, False)
+            for coin in coins:
+                if self.rect.left < coin.rect.center[0] < self.rect.right and\
+                        self.rect.top < coin.rect.center[1] < self.rect.bottom and not coin.is_flight:
+                    coins_sprites.remove(coin)
+                    game.coins += 1
         else:
             pass
             # анимация
@@ -275,6 +294,7 @@ class Enemy(Character):
         self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
         self.timers = [0, 0, 0, 0]
         self.rect.center = self.respawn
+        self.time_respawn = random.randrange(120, 600)
 
     def update(self):
         if self.alive:
@@ -381,16 +401,22 @@ class Enemy(Character):
                 self.rect.center, self.image, self.timers = self.respawn, self.image_stand, [0, 0, 0, 0]
                 self.hp = random.randrange(400, 700, 100)
                 game.account += random.randrange(10, 30)
+                self.time_respawn = random.randrange(120, 600)
+                game.enemy -= 1
 
         else:
-            if self.timers[3] == 120:
+            alive = 0
+            for en in character_sprites:
+                if en != player and en.alive:
+                    alive += 1
+            if self.timers[3] == self.time_respawn and game.enemy - alive > 0:
                 if self.respawn[0] > 0:
                     self.path.append([len(visual_board.board[0]) - 1, 6, False])
                 else:
                     self.path.append([0, 6, False])
                 self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
                 self.alive = True
-            else:
+            elif not game.break_game[0] and game.enemy - alive > 0:
                 self.timers[3] += 1
 
     def finding_path_1(self, board, cell_player, cell_self):
@@ -534,18 +560,19 @@ class PotionStand(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (-100, -100)
         self.coord_cell, self.invisibility = coord_cell, False
-        self.restoration, self.prise, self.uses = random.randrange(200, 500, 100), 0, 0
+        self.restoration, self.prise, self.uses = random.randrange(200, 500, 100), 0, [0, False]
 
     def update(self):
         if self.invisibility and self.rect.center != (-100, -100):
             self.rect.center = (-100, -100)
+            self.uses[1] = False
         elif not self.invisibility and self.rect.center == (-100, -100):
             if visual_board.board[self.coord_cell[1]][self.coord_cell[0]] == 1:
                 self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 20)
             else:
                 self.rect.center = (self.coord_cell[0] * 100 + 50, self.coord_cell[1] * 100 + 47)
             self.restoration = random.randrange(200, 500, 100)
-            self.prise = (self.restoration // 100) * 5 + game.wave * 2 + self.uses * 3
+            self.prise = (self.restoration // 100) * 5 + game.wave * 2 + self.uses[0] * 3
         if not self.invisibility:
             if self.timer == 9:
                 self.cur_frame = (self.cur_frame + 1) % len(self.frames)
@@ -553,7 +580,7 @@ class PotionStand(pygame.sprite.Sprite):
             self.timer += 1
             if self.timer == 10:
                 self.timer = 0
-        if visual_board.get_coord(player.rect.center) == self.coord_cell and not self.invisibility:
+        if visual_board.get_coord(player.rect.center) == self.coord_cell and not self.invisibility and not self.uses[1]:
             psw.invisibility = False
             if game.coins >= self.prise:
                 psw_pay.invisibility = False
@@ -710,7 +737,7 @@ if __name__ == '__main__':
     GameOver()
     hp_enemy, hit_enemy = [], []
     player = Player()
-    for _ in range(1):
+    for _ in range(5):
         Enemy()
     level = get_level()
     ps, psw = PotionStand(level[-1]), PotionStandWindow('PotionStand_window.png', [level[-1][0], level[-1][1] - 1])
