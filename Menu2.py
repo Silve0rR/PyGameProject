@@ -4,6 +4,7 @@ import os
 size = width, height = 1270, 750
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('Меню')
+
 pygame.font.init()
 pygame.mixer.init()
 
@@ -286,6 +287,20 @@ def game_cycle():
         font = pygame.font.Font(None, 25)
         text = font.render(ACTUAL_SOUND.upper(), True, (255, 255, 255))
         screen.blit(text, (1050, 25))
+
+        with open('Рекорд.txt') as f:
+            record_number = f.read()
+
+        width_record = width // 2 - 100
+
+        font_record = pygame.font.Font(None, 40)
+        text_record = font_record.render('Рекорд:', True, (255, 255, 255))
+        screen.blit(text_record, (width_record, 170))
+
+        font_record_number = pygame.font.Font(None, 40)
+        text_record_number = font_record_number.render(record_number, True, (255, 255, 255))
+        screen.blit(text_record_number, (width_record + 120, 170))
+
         all_Background_options.draw(screen)
 
         if background_options:  # открытие настроек
