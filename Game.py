@@ -81,6 +81,9 @@ class Game:
                 self.break_game[0] = False
                 ps.invisibility = True
 
+        with open('Рекорд.txt', 'w') as f:
+            f.write(str(self.account) + ' ' + str(self.time))
+
     def events(self):  # События
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -997,6 +1000,20 @@ def game_cycle():
         font = pygame.font.Font(None, 25)
         text = font.render(ACTUAL_SOUND.upper(), True, (255, 255, 255))
         game.screen.blit(text, (1050, 25))
+
+        with open('Рекорд.txt') as f:
+            record_number = f.read()
+
+        width_record = WIDTH // 2 - 100
+
+        font_record = pygame.font.Font(None, 40)
+        text_record = font_record.render('Рекорд:', True, (255, 255, 255))
+        game.screen.blit(text_record, (width_record, 170))
+
+        font_record_number = pygame.font.Font(None, 40)
+        text_record_number = font_record_number.render(record_number, True, (255, 255, 255))
+        game.screen.blit(text_record_number, (width_record + 120, 170))
+
         all_Background_options.draw(game.screen)
 
         if background_options:  # открытие настроек
