@@ -26,8 +26,8 @@ SOUND_PAUSE = False
 RUSSIA = True
 ENGLISH = False
 
-ARROWS = True
-WASD = False
+ARROWS = False
+WASD = True
 
 HIT_J = True
 HIT_K = False
@@ -276,7 +276,7 @@ class Player(Character):
         super().__init__('Player.png', ('Player_run.png', (6, 1)), ('Player_attack.png', (4, 3)),
                          ('Player_rip.png', (6, 1)))
         self.rect.center = WIDTH // 2, HEIGHT // 2
-        self.hp, self.direction = 100, 'right'
+        self.hp, self.direction = 1000, 'right'
 
     def update(self):
         if self.hp > 0:
@@ -343,7 +343,7 @@ class GameOver(pygame.sprite.Sprite):
 class Enemy(Character):
     def __init__(self):
         super().__init__('Guard.png', ('Guard_run.png', (6, 1)), ('Guard_attack.png', (4, 3)),
-                         ('Player_rip.png', (6, 1)))
+                         ('Guard_rip.png', (6, 1)))
         self.hp, self.speed = random.randrange(400, 700, 100), random.randrange(4, 6)
         self.path, self.run = [], [0, 1, False]
         self.respawn = random.choice([[-100, HEIGHT - 50], [WIDTH + 100, HEIGHT - 50]])
@@ -756,8 +756,8 @@ class Cur(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (50, 50))
         self.rect = self.image.get_rect()
 
-    def get_coords(self, coords):
-        self.rect.x, self.rect.y = coords
+    def get_coord(self, coord):
+        self.rect.x, self.rect.y = coord
 
 
 class MainMenu(pygame.sprite.Sprite):
@@ -868,7 +868,7 @@ def load_image_menu(name, color_key=None):
 
 
 def game_cycle():
-    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND, image1
+    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND, image1, keys_sl
     image11 = pygame.transform.scale(image1, (1280, 750))
     pygame.init()
     running, draw_sprite = True, False
@@ -879,7 +879,7 @@ def game_cycle():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.MOUSEMOTION:
-                cur.get_coords(event.pos)
+                cur.get_coord(event.pos)
                 if pygame.mouse.get_focused():
                     draw_sprite = True
                 else:
@@ -934,24 +934,30 @@ def game_cycle():
                         if HIT_J:
                             HIT_J = False
                             HIT_K = True
+                            keys_sl['attack'] = pygame.K_k
                             hit_button.rename("HIT_K.png")
+
                         elif HIT_K:
                             HIT_K = False
                             HIT_L = True
+                            keys_sl['attack'] = pygame.K_l
                             hit_button.rename("HIT_L.png")
                         elif HIT_L:
                             HIT_L = False
                             HIT_J = True
+                            keys_sl['attack'] = pygame.K_j
                             hit_button.rename("HIT_J.png")
                     if (WIDTH // 4 + 160 < x < WIDTH // 4 + 190 and 120 < y < 145) or \
                             (WIDTH // 4 - 25 < x < WIDTH // 4 + 5 and 120 < y < 145):  # смена управления
                         if ARROWS:
                             ARROWS = False
                             WASD = True
+                            keys_sl['run'] = [pygame.K_a, pygame.K_d]
                             options_control_arrows.rename("WASD.png")
                         elif WASD:
                             ARROWS = True
                             WASD = False
+                            keys_sl['run'] = [pygame.K_LEFT, pygame.K_RIGHT]
                             options_control_arrows.rename("ARROWS.png")
                 else:
                     if WIDTH // 2 - 155 < x < WIDTH // 2 + 145 and 200 < y < 300:  # нажатие на кнопку старт
@@ -1109,7 +1115,7 @@ if __name__ == '__main__':
 
     # настройки_управление_ персонажем
     optinons_control = OptionsBackground("CONTROL_RUSSIA.png", WIDTH + WIDTH // 4, 50, 200, 50)  # спрайт управления
-    options_control_arrows = OptionsBackground("ARROWS.png", WIDTH + WIDTH // 4 + 25, 115, 150, 40)  # стрелочки
+    options_control_arrows = OptionsBackground("WASD.png", WIDTH + WIDTH // 4 + 25, 115, 150, 40)  # стрелочки
     control_right = OptionsBackground("arrow_right.png", WIDTH + WIDTH // 4 + 180, 120, 25, 25)  # смена(вправо)
     control_left = OptionsBackground("arrow_left.png", WIDTH + WIDTH // 4 + 35, 120, 25, 25)  # смена(влево)
 
