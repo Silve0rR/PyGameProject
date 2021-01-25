@@ -81,8 +81,6 @@ class Game:
                 self.break_game[0] = False
                 ps.invisibility = True
 
-        with open('Рекорд.txt', 'w') as f:
-            f.write(str(self.account) + ' ' + str(self.time))
 
     def events(self):  # События
         for event in pygame.event.get():
@@ -137,6 +135,12 @@ class Game:
         hp_enemy = []
         if player.hp <= 0:
             game_over_sprite.draw(self.screen)
+            with open('Рекорд.txt', 'r') as f:
+                n = f.read()
+                n = n.split()
+                if self.account > int(n[0]):
+                    with open('Рекорд.txt', 'w') as file:
+                        file.write(str(self.account) + ' ' + str(time))
 
 
 class VisualBoard:
