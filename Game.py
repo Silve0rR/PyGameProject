@@ -41,30 +41,35 @@ class Game:
         self.coins, self.account, self.time = 0, 0, 0
         self.wave, self.timers = 1, [0, 0]
         self.enemy, self.break_game = 5 + self.wave, [False, 0]
-        self.running = True
+        self.running, self.pause, self.options, self.mini_menu = True, False, False, False
+        self.mous_click, self.exit_command = False, ''
 
     def game_run(self):
-        print('game')
         while self.running:
             pygame.time.Clock().tick(FPS)
             self.events()
             self.update()
             self.visualization()
-            if player.hp >= 0:
+            if player.hp >= 0 and not self.pause:
                 self.time += 1
-            else:
-                if self.timers[1] < 120:
+            elif player.hp <= 0 or self.exit_command != '':
+                if self.timers[1] < 120 and self.exit_command == '':
                     self.timers[1] += 1
                 else:
-                    self.timers, self.coins, self.time, self.enemy = [0, 0], 0, 0, 5 + self.wave
+                    self.timers, self.coins, self.time, self.enemy = [0, 0], 0, 0, 6
                     self.break_game, self.account, self.wave = [False, 0], 0, 1
-                    player.hp = 1000
+                    player.hp, self.pause = 1000, False
                     for en in character_sprites:
                         if en != player:
                             en.alive = False
                             en.timers = [0, 0, 0, 0, 0]
                             en.rect.center = en.respawn
-                    break
+                    if self.exit_command == 'menu' or self.timers[1] == 120:
+                        self.exit_command = ''
+                        break
+                    elif self.exit_command == 'game':
+                        self.exit_command = ''
+                        self.running = False
             pygame.display.flip()
             alive = 0
             for en in character_sprites:
@@ -80,19 +85,40 @@ class Game:
             else:
                 self.break_game[0] = False
                 ps.invisibility = True
-
+        with open('Рекорд.txt', 'r') as f:
+            n = f.read()
+            n = n.split()
+            time = str((int(n[1]) // 60) // 60) + ':'
+            if (self.time // 60) % 60 < 10:
+                time += '0' + str((self.time // 60) % 60)
+            else:
+                time += str((self.time // 60) % 60)
+            if self.account > int(n[0]):
+                with open('Рекорд.txt', 'w') as file:
+                    file.write(str(self.account) + ' ' + time)
 
     def events(self):  # События
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if not self.pause:
+                    if 3 < event.pos[0] < 53 and 10 < event.pos[1] < 60:
+                        self.pause, self.options = True, True
+                    if 57 < event.pos[0] < 107 and 10 < event.pos[1] < 60:
+                        self.pause, self.mini_menu = True, True
+                self.mous_click = True
+            else:
+                self.mous_click = False
 
     def update(self):  # Обнавление
-        character_sprites.update()
-        invisible_sprites.update()
-        coins_sprites.update()
-        if player.hp <= 0:
-            game_over_sprite.update()
+        cur.get_coord(pygame.mouse.get_pos())
+        if not self.pause:
+            character_sprites.update()
+            invisible_sprites.update()
+            coins_sprites.update()
+            if player.hp <= 0:
+                game_over_sprite.update()
 
     def visualization(self):  # Визуализация
         self.screen.blit(self.bg, [0, 0])
@@ -135,12 +161,26 @@ class Game:
         hp_enemy = []
         if player.hp <= 0:
             game_over_sprite.draw(self.screen)
-            with open('Рекорд.txt', 'r') as f:
-                n = f.read()
-                n = n.split()
-                if self.account > int(n[0]):
-                    with open('Рекорд.txt', 'w') as file:
-                        file.write(str(self.account) + ' ' + str(time))
+        if self.pause:
+            if self.options:
+                self.options = options_menu(*pygame.mouse.get_pos(), self.mous_click)
+            elif self.mini_menu:
+                all_sprites_mini_menu.draw(self.screen)
+                self.mini_menu = mini_menu(*pygame.mouse.get_pos(), self.mous_click)
+            else:
+                self.pause = False
+        options_animation(self.options)
+        all_Background_options.draw(game.screen)
+        if pygame.mouse.get_pos()[0] < 500 and pygame.mouse.get_pos()[1] < 150:
+            all_cur.draw(self.screen)
+        elif self.pause:
+            all_cur.draw(self.screen)
+
+    def save_game(self):
+        save_values = [str(self.account), str(self.time), str(self.coins), str(self.wave),
+                       str(player.hp), str(self.enemy), str(ps.uses[0])]
+        with open('save.txt', 'w') as save_file:
+            save_file.write('&'.join(save_values))
 
 
 class VisualBoard:
@@ -785,6 +825,21 @@ class MainMenu(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
 
 
+class MiniMenu(pygame.sprite.Sprite):
+    def __init__(self, name_file, coord_x, coord_y, size_x, size_y):
+        super().__init__(all_sprites_mini_menu)
+        self.image = load_image(name_file, (35, 90, 115))
+        self.image = pygame.transform.scale(self.image, (size_x, size_y))
+        self.rect = self.image.get_rect()
+        self.rect.center = (coord_x, coord_y)
+        self.size_x = size_x
+        self.size_y = size_y
+
+    def rename(self, name):
+        self.image = load_image(name, (35, 90, 115))
+        self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
+
+
 class OptionsBackground(pygame.sprite.Sprite):  # настройки
     def __init__(self, name_file, coord_x, coord_y, size_x, size_y):
         super().__init__(all_Background_options)
@@ -894,75 +949,7 @@ def game_cycle():
                     background_options = True
 
                 if background_options:
-                    if 0 < x < 45 and HEIGHT - 55 < y < HEIGHT:  # закрытие настроек
-                        background_options = False
-
-                    if (WIDTH // 4 + WIDTH // 4 + 150 < x < WIDTH // 4 + WIDTH // 4 + 180 and 120 < y < 145) or \
-                            (WIDTH // 4 + WIDTH // 4 - 15 < x < WIDTH // 4 + WIDTH // 4 + 10 and 120 < y < 145):  # язык
-                        if not ENGLISH:
-                            RUSSIA = False
-                            ENGLISH = True
-                            start.rename("START_ENGLISH.png", )
-                            options.rename("OPTIONS_ENGLISH.png")
-                            exit_game.rename("EXIT_ENGLISH.png")
-
-                            optinons_control.rename("CONTROL_ENGLISH.png")
-
-                            options_JUMP.rename("JUMP_ENGLISH.png")
-
-                            options_hit.rename("HIT_ENGLISH.png")
-
-                            option_languages.rename("LANGUAGES_ENGLISH.png")
-                            languages_sprite.rename("LANG_ENGLISH.png")
-
-                            back_main.rename("BACK_ENGLISH.png")
-                        else:
-                            RUSSIA = True
-                            ENGLISH = False
-                            start.rename("START_RUSSIA.png")
-                            options.rename("OPTIONS_RUSSIA.png")
-                            exit_game.rename("EXIT_RUSSIA.png")
-
-                            optinons_control.rename("CONTROL_RUSSIA.png")
-
-                            options_JUMP.rename("JUMP_RUSSIA.png")
-
-                            options_hit.rename("HIT_RUSSIA.png")
-
-                            option_languages.rename("LANGUAGES_RUSSIA.png")
-                            languages_sprite.rename("LANG_RUSSIA.png")
-
-                            back_main.rename("BACK_RUSSIA.png")
-                    if (WIDTH // 4 + 120 < x < WIDTH // 4 + 155 and 375 < y < 400) or \
-                            (WIDTH // 4 + 20 < x < WIDTH // 4 + 45 and 375 < y < 400):  # смена кнопки удара
-                        if HIT_J:
-                            HIT_J = False
-                            HIT_K = True
-                            keys_sl['attack'] = pygame.K_k
-                            hit_button.rename("HIT_K.png")
-
-                        elif HIT_K:
-                            HIT_K = False
-                            HIT_L = True
-                            keys_sl['attack'] = pygame.K_l
-                            hit_button.rename("HIT_L.png")
-                        elif HIT_L:
-                            HIT_L = False
-                            HIT_J = True
-                            keys_sl['attack'] = pygame.K_j
-                            hit_button.rename("HIT_J.png")
-                    if (WIDTH // 4 + 160 < x < WIDTH // 4 + 190 and 120 < y < 145) or \
-                            (WIDTH // 4 - 25 < x < WIDTH // 4 + 5 and 120 < y < 145):  # смена управления
-                        if ARROWS:
-                            ARROWS = False
-                            WASD = True
-                            keys_sl['run'] = [pygame.K_a, pygame.K_d]
-                            options_control_arrows.rename("WASD.png")
-                        elif WASD:
-                            ARROWS = True
-                            WASD = False
-                            keys_sl['run'] = [pygame.K_LEFT, pygame.K_RIGHT]
-                            options_control_arrows.rename("ARROWS.png")
+                    background_options = options_menu(x, y, True)
                 else:
                     if WIDTH // 2 - 155 < x < WIDTH // 2 + 145 and 200 < y < 300:  # нажатие на кнопку старт
                         return True
@@ -1026,55 +1013,158 @@ def game_cycle():
 
         all_Background_options.draw(game.screen)
 
-        if background_options:  # открытие настроек
-            background_fon.get_left(0)
-
-            optinons_control.get_left(WIDTH // 4 + 20)
-            options_control_arrows.get_left(WIDTH // 4 + 20)
-            control_right.get_left(WIDTH // 4 + 180)
-            control_left.get_left(WIDTH // 4)
-
-            options_JUMP.get_left(WIDTH // 4 + 20)
-            options_Jump_space.get_left(WIDTH // 4 + 20)
-
-            options_hit.get_left(WIDTH // 4 + 20)
-            hit_button.get_left(WIDTH // 4 + 20)
-            hit_right.get_left(WIDTH // 4 + 160)
-            hit_left.get_left(WIDTH // 4 + 60)
-
-            option_languages.get_left(WIDTH // 4 + WIDTH // 4)
-            languages_sprite.get_left(WIDTH // 4 + WIDTH // 4 + 60)
-            language_right.get_left(WIDTH // 4 + WIDTH // 4 + 160)
-            language_left.get_left(WIDTH // 4 + WIDTH // 4)
-
-            back_main.get_left(0)
-        else:  # закрытие настроек
-            background_fon.get_right(WIDTH)
-
-            optinons_control.get_right(WIDTH + WIDTH // 4)
-            options_control_arrows.get_right(WIDTH + WIDTH // 4)
-            control_right.get_right(WIDTH + WIDTH // 4 + 170)
-            control_left.get_right(WIDTH + WIDTH // 4 - 30)
-
-            options_JUMP.get_right(WIDTH + WIDTH // 4)
-            options_Jump_space.get_right(WIDTH + WIDTH // 4)
-
-            options_hit.get_right(WIDTH + WIDTH // 4)
-            hit_button.get_right(WIDTH + WIDTH // 4)
-            hit_right.get_right(WIDTH + WIDTH // 4 + 170)
-            hit_left.get_right(WIDTH + WIDTH // 4 - 30)
-
-            option_languages.get_right(WIDTH + WIDTH // 4 + WIDTH // 4)
-            languages_sprite.get_right(WIDTH + WIDTH // 4 + WIDTH // 4 + 100)
-            language_right.get_right(WIDTH + WIDTH // 4 + WIDTH // 4 + 50)
-            language_left.get_right(WIDTH + WIDTH // 4)
-
-            back_main.get_right(WIDTH)
+        options_animation(background_options)
 
         if draw_sprite:
             all_cur.draw(game.screen)
         pygame.time.Clock().tick(60)
         pygame.display.flip()
+
+
+def options_menu(x, y, click):
+    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND
+    if click:
+        if 0 < x < 45 and HEIGHT - 55 < y < HEIGHT:  # закрытие настроек
+            return False
+
+        if (WIDTH // 4 + WIDTH // 4 + 150 < x < WIDTH // 4 + WIDTH // 4 + 180 and 120 < y < 145) or \
+                (WIDTH // 4 + WIDTH // 4 - 15 < x < WIDTH // 4 + WIDTH // 4 + 10 and 120 < y < 145):  # язык
+            if not ENGLISH:
+                RUSSIA = False
+                ENGLISH = True
+                start.rename("START_ENGLISH.png", )
+                options.rename("OPTIONS_ENGLISH.png")
+                exit_game.rename("EXIT_ENGLISH.png")
+
+                optinons_control.rename("CONTROL_ENGLISH.png")
+
+                options_JUMP.rename("JUMP_ENGLISH.png")
+
+                options_hit.rename("HIT_ENGLISH.png")
+
+                option_languages.rename("LANGUAGES_ENGLISH.png")
+                languages_sprite.rename("LANG_ENGLISH.png")
+
+                back_main.rename("BACK_ENGLISH.png")
+
+                continue_btn.rename('Continue_english.png')
+                exit_menu.rename('exit_menu_english.png')
+                exit_game_mm.rename('exit_game_english.png')
+            else:
+                RUSSIA = True
+                ENGLISH = False
+                start.rename("START_RUSSIA.png")
+                options.rename("OPTIONS_RUSSIA.png")
+                exit_game.rename("EXIT_RUSSIA.png")
+
+                optinons_control.rename("CONTROL_RUSSIA.png")
+
+                options_JUMP.rename("JUMP_RUSSIA.png")
+
+                options_hit.rename("HIT_RUSSIA.png")
+
+                option_languages.rename("LANGUAGES_RUSSIA.png")
+                languages_sprite.rename("LANG_RUSSIA.png")
+
+                back_main.rename("BACK_RUSSIA.png")
+
+                continue_btn.rename('Continue_russia.png')
+                exit_menu.rename('exit_menu_russia.png')
+                exit_game_mm.rename('exit_game_russia.png')
+        if (WIDTH // 4 + 120 < x < WIDTH // 4 + 155 and 375 < y < 400) or \
+                (WIDTH // 4 + 20 < x < WIDTH // 4 + 45 and 375 < y < 400):  # смена кнопки удара
+            if HIT_J:
+                HIT_J = False
+                HIT_K = True
+                keys_sl['attack'] = pygame.K_k
+                hit_button.rename("HIT_K.png")
+
+            elif HIT_K:
+                HIT_K = False
+                HIT_L = True
+                keys_sl['attack'] = pygame.K_l
+                hit_button.rename("HIT_L.png")
+            elif HIT_L:
+                HIT_L = False
+                HIT_J = True
+                keys_sl['attack'] = pygame.K_j
+                hit_button.rename("HIT_J.png")
+        if (WIDTH // 4 + 160 < x < WIDTH // 4 + 190 and 120 < y < 145) or \
+                (WIDTH // 4 - 25 < x < WIDTH // 4 + 5 and 120 < y < 145):  # смена управления
+            if ARROWS:
+                ARROWS = False
+                WASD = True
+                keys_sl['run'] = [pygame.K_a, pygame.K_d]
+                options_control_arrows.rename("WASD.png")
+            elif WASD:
+                ARROWS = True
+                WASD = False
+                keys_sl['run'] = [pygame.K_LEFT, pygame.K_RIGHT]
+                options_control_arrows.rename("ARROWS.png")
+    return True
+
+
+def options_animation(tf):
+
+    if tf:  # открытие настроек
+        background_fon.get_left(0)
+
+        optinons_control.get_left(WIDTH // 4 + 20)
+        options_control_arrows.get_left(WIDTH // 4 + 20)
+        control_right.get_left(WIDTH // 4 + 180)
+        control_left.get_left(WIDTH // 4)
+
+        options_JUMP.get_left(WIDTH // 4 + 20)
+        options_Jump_space.get_left(WIDTH // 4 + 20)
+
+        options_hit.get_left(WIDTH // 4 + 20)
+        hit_button.get_left(WIDTH // 4 + 20)
+        hit_right.get_left(WIDTH // 4 + 160)
+        hit_left.get_left(WIDTH // 4 + 60)
+
+        option_languages.get_left(WIDTH // 4 + WIDTH // 4)
+        languages_sprite.get_left(WIDTH // 4 + WIDTH // 4 + 60)
+        language_right.get_left(WIDTH // 4 + WIDTH // 4 + 160)
+        language_left.get_left(WIDTH // 4 + WIDTH // 4)
+        back_main.get_left(0)
+    else:  # закрытие настроек
+        background_fon.get_right(WIDTH)
+
+        optinons_control.get_right(WIDTH + WIDTH // 4)
+        options_control_arrows.get_right(WIDTH + WIDTH // 4)
+        control_right.get_right(WIDTH + WIDTH // 4 + 170)
+        control_left.get_right(WIDTH + WIDTH // 4 - 30)
+
+        options_JUMP.get_right(WIDTH + WIDTH // 4)
+        options_Jump_space.get_right(WIDTH + WIDTH // 4)
+
+        options_hit.get_right(WIDTH + WIDTH // 4)
+        hit_button.get_right(WIDTH + WIDTH // 4)
+        hit_right.get_right(WIDTH + WIDTH // 4 + 170)
+        hit_left.get_right(WIDTH + WIDTH // 4 - 30)
+
+        option_languages.get_right(WIDTH + WIDTH // 4 + WIDTH // 4)
+        languages_sprite.get_right(WIDTH + WIDTH // 4 + WIDTH // 4 + 100)
+        language_right.get_right(WIDTH + WIDTH // 4 + WIDTH // 4 + 50)
+        language_left.get_right(WIDTH + WIDTH // 4)
+        back_main.get_right(WIDTH)
+
+
+def mini_menu(x, y, click):
+    if continue_btn.rect.left < x < continue_btn.rect.right and\
+            continue_btn.rect.top < y < continue_btn.rect.bottom and click:
+        return False
+    if exit_menu.rect.left < x < exit_menu.rect.right and \
+            exit_menu.rect.top < y < exit_menu.rect.bottom and click:
+        game.exit_command = 'menu'
+        game.save_game()
+        return False
+    if exit_game_mm.rect.left < x < exit_game_mm.rect.right and\
+            exit_game_mm.rect.top < y < exit_game_mm.rect.bottom and click:
+        game.exit_command = 'game'
+        game.save_game()
+        return False
+    return True
 
 
 if __name__ == '__main__':
@@ -1101,8 +1191,10 @@ if __name__ == '__main__':
     image1 = load_image("FON1.jpg")  # загрузка фона
     all_Background_options = pygame.sprite.Group()  # настройки
     all_sprites_main_menu = pygame.sprite.Group()  # кнопки: Старт, Настройки, Выход
+    all_sprites_mini_menu = pygame.sprite.Group()  # Кнопки: продолжить, сохранить и выйти(в главное меню)
     all_cur = pygame.sprite.Group()  # курсор
     cur = Cur()
+
     # меню
     start = MainMenu("START_RUSSIA.png", WIDTH // 2 - 150, -500, 300, 100)  # кнопка Старт(Start)
     options = MainMenu("OPTIONS_RUSSIA.png", WIDTH // 2 - 125, -300, 250, 70)  # кнопка Настройки(Options)
@@ -1116,6 +1208,12 @@ if __name__ == '__main__':
 
     # настройки_фон
     background_fon = OptionsBackground("Прозрачный фон.png", WIDTH, 0, 1280, 750)  # прозрачный фон
+    all_sprites_mini_menu.add(background_fon)
+
+    # мини меню
+    continue_btn = MiniMenu("Continue_russia.png", WIDTH // 2, 210, 350, 125)
+    exit_menu = MiniMenu("exit_menu_russia.png", WIDTH // 2, 350, 260, 80)
+    exit_game_mm = MiniMenu("exit_game_russia.png", WIDTH // 2, 450, 260, 80)
 
     # настройки_управление_ персонажем
     optinons_control = OptionsBackground("CONTROL_RUSSIA.png", WIDTH + WIDTH // 4, 50, 200, 50)  # спрайт управления
@@ -1143,6 +1241,6 @@ if __name__ == '__main__':
     back_main = OptionsBackground("BACK_RUSSIA.png", WIDTH + 50, HEIGHT - 55, 50, 25)
     pygame.mouse.set_visible(False)  # скрывает курсор
 
-    while game_cycle() and game.running:
+    while game.running and game_cycle():
         game.game_run()
     pygame.quit()
