@@ -40,7 +40,7 @@ class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.bg = load_image('background.jpg')
-        self.coins, self.account, self.time = 0, 0, 0
+        self.coins, self.account, self.time = 0, 1000, 0
         self.wave, self.timers = 1, [0, 0]
         self.enemy, self.break_game = 6, [False, 0]
         self.running, self.pause, self.options, self.mini_menu = True, False, False, False
@@ -58,6 +58,7 @@ class Game:
                 if self.timers[1] < 120 and self.exit_command == '':
                     self.timers[1] += 1
                 else:
+                    self.save_record()
                     self.coins, self.time, self.enemy = 0, 0, 6
                     self.break_game, self.account, self.wave = [False, 0], 0, 1
                     player.hp, self.pause = 1000, False
@@ -93,17 +94,6 @@ class Game:
             else:
                 self.break_game[0] = False
                 ps.invisibility = True
-        with open('Рекорд.txt', 'r') as f:
-            n = f.read()
-            n = n.split()
-            time = str((int(n[1]) // 60) // 60) + ':'
-            if (self.time // 60) % 60 < 10:
-                time += '0' + str((self.time // 60) % 60)
-            else:
-                time += str((self.time // 60) % 60)
-            if self.account > int(n[0]):
-                with open('Рекорд.txt', 'w') as file:
-                    file.write(str(self.account) + ' ' + time)
 
     def events(self):  # События
         for event in pygame.event.get():
@@ -192,6 +182,18 @@ class Game:
             save_values = ['None']
         with open('save.txt', 'w') as save_file:
             save_file.write('&'.join(save_values))
+
+    def save_record(self):
+        with open('Рекорд.txt', 'r') as f:
+            n = f.read().split()
+        if not n or int(n[0]) < self.account:
+            time = str((int(self.time) // 60) // 60) + ':'
+            if (self.time // 60) % 60 < 10:
+                time += '0' + str((self.time // 60) % 60)
+            else:
+                time += str((self.time // 60) % 60)
+            with open('Рекорд.txt', 'w') as file:
+                file.write(str(self.account) + ' ' + time)
 
     def set_values(self):
         player.hp, ps.uses[0] = int(values_continue_game[4]), int(values_continue_game[6])
@@ -337,7 +339,7 @@ class Player(Character):
         super().__init__('Player.png', ('Player_run.png', (6, 1)), ('Player_attack.png', (4, 3)),
                          ('Player_rip.png', (6, 1)))
         self.rect.center = WIDTH // 2, HEIGHT // 2
-        self.hp, self.direction = 1000, 'right'
+        self.hp, self.direction = 10, 'right'
 
     def update(self):
         if self.hp > 0:
@@ -1048,11 +1050,7 @@ def game_cycle():
         game.screen.blit(text, (1050, 25))
 
         with open('Рекорд.txt') as f:
-            record_number = f.read().split()
-        if int(record_number[1]) // 60 >= 10:
-            record_number[1] = f'{int(record_number[1]) // 60 // 60}:{int(record_number[1]) // 60 % 60}'
-        else:
-            record_number[1] = f'{int(record_number[1]) // 60 // 60}:0{int(record_number[1]) // 60}'
+            record_number = f.read()
 
         width_record = WIDTH // 2 - 110
 
@@ -1061,7 +1059,7 @@ def game_cycle():
         game.screen.blit(text_record, (width_record, 170))
 
         font_record_number = pygame.font.Font(None, 40)
-        text_record_number = font_record_number.render(' '.join(record_number), True, (255, 255, 255))
+        text_record_number = font_record_number.render(record_number, True, (255, 255, 255))
         game.screen.blit(text_record_number, (width_record + 120, 170))
 
         all_Background_options.draw(game.screen)
