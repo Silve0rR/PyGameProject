@@ -40,7 +40,7 @@ class Game:
         self.bg = load_image('background.jpg')
         self.coins, self.account, self.time = 0, 0, 0
         self.wave, self.timers = 1, [0, 0]
-        self.enemy, self.break_game = 5 + self.wave, [False, 0]
+        self.enemy, self.break_game = 6, [False, 0]
         self.running, self.pause, self.options, self.mini_menu = True, False, False, False
         self.mous_click, self.exit_command = False, ''
 
@@ -50,13 +50,13 @@ class Game:
             self.events()
             self.update()
             self.visualization()
-            if player.hp >= 0 and not self.pause:
+            if player.hp > 0 and not self.pause:
                 self.time += 1
             elif player.hp <= 0 or self.exit_command != '':
                 if self.timers[1] < 120 and self.exit_command == '':
                     self.timers[1] += 1
                 else:
-                    self.timers, self.coins, self.time, self.enemy = [0, 0], 0, 0, 6
+                    self.coins, self.time, self.enemy = 0, 0, 6
                     self.break_game, self.account, self.wave = [False, 0], 0, 1
                     player.hp, self.pause = 1000, False
                     for en in character_sprites:
@@ -64,12 +64,18 @@ class Game:
                             en.alive = False
                             en.timers = [0, 0, 0, 0, 0]
                             en.rect.center = en.respawn
-                    if self.exit_command == 'menu' or self.timers[1] == 120:
-                        self.exit_command = ''
+                    if self.exit_command != '':
+                        if self.exit_command == 'menu':
+                            self.exit_command = ''
+                            break
+                        elif self.exit_command == 'game':
+                            self.exit_command = ''
+                            self.running = False
+                    else:
+                        self.save_game('game_over')
+                        self.timers = [0, 0]
                         break
-                    elif self.exit_command == 'game':
-                        self.exit_command = ''
-                        self.running = False
+
             pygame.display.flip()
             alive = 0
             for en in character_sprites:
@@ -176,11 +182,20 @@ class Game:
         elif self.pause:
             all_cur.draw(self.screen)
 
-    def save_game(self):
-        save_values = [str(self.account), str(self.time), str(self.coins), str(self.wave),
-                       str(player.hp), str(self.enemy), str(ps.uses[0])]
+    def save_game(self, key='save'):
+        if key == 'save':
+            save_values = [str(self.account), str(self.time), str(self.coins), str(self.wave),
+                           str(player.hp), str(self.enemy), str(ps.uses[0])]
+        else:
+            save_values = ['None']
         with open('save.txt', 'w') as save_file:
             save_file.write('&'.join(save_values))
+
+    def set_values(self):
+        player.hp, ps.uses[0] = int(values_continue_game[4]), int(values_continue_game[6])
+        self.coins, self.account = int(values_continue_game[2]), int(values_continue_game[0])
+        self.time = int(values_continue_game[1])
+        self.wave, self.enemy = int(values_continue_game[3]), int(values_continue_game[5])
 
 
 class VisualBoard:
@@ -805,10 +820,13 @@ class Cur(pygame.sprite.Sprite):
 
 
 class MainMenu(pygame.sprite.Sprite):
-    def __init__(self, name_file, coord_x, coord_y, size_x, size_y):
+    def __init__(self, name_file, coord_x, coord_y, size_x, size_y, load_im='load_image_menu'):
         super().__init__(all_sprites_main_menu)
 
-        self.image = load_image_menu(name_file)  # загружает спрайт
+        if load_im == 'load_image_menu':  # загружает спрайт
+            self.image = load_image_menu(name_file)
+        else:
+            self.image = load_image(name_file, (35, 90, 115))
         self.image = pygame.transform.scale(self.image, (size_x, size_y))
         self.size_x = size_x
         self.size_y = size_y
@@ -819,6 +837,9 @@ class MainMenu(pygame.sprite.Sprite):
     def get_cords(self,  last_y):
         if self.rect.y < last_y:
             self.rect.y += 20
+
+    def set_coord_y(self, coord_y):
+        self.rect.y = coord_y
 
     def rename(self, name):
         self.image = load_image_menu(name)
@@ -927,11 +948,18 @@ def load_image_menu(name, color_key=None):
 
 
 def game_cycle():
-    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND, image1, keys_sl
+    global SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND, image1, values_continue_game
     image11 = pygame.transform.scale(image1, (1280, 750))
-    pygame.init()
+    try:
+        with open('save.txt') as f:  # чтение сохранений
+            values_continue_game = f.read().split('&')
+    except FileNotFoundError:
+        values_continue_game = ['None']
     running, draw_sprite = True, False
-
+    continue_menu.set_coord_y(-700)
+    start.set_coord_y(-500)
+    options.set_coord_y(-300)
+    exit_game.set_coord_y(-100)
     background_options = False
     while running:
         for event in pygame.event.get():
@@ -945,15 +973,22 @@ def game_cycle():
                     draw_sprite = False
             if event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = event.pos
-                if WIDTH // 2 - 130 < x < WIDTH // 2 + 115 and 320 < y < 390:  # открытие настрооек
+                if options.rect.left < x < options.rect.right and\
+                        options.rect.top < y < options.rect.bottom:  # открытие настрооек
                     background_options = True
 
                 if background_options:
                     background_options = options_menu(x, y, True)
                 else:
-                    if WIDTH // 2 - 155 < x < WIDTH // 2 + 145 and 200 < y < 300:  # нажатие на кнопку старт
+                    if continue_menu.rect.left < x < continue_menu.rect.right and\
+                            continue_menu.rect.top < y < continue_menu.rect.bottom:  # нажатие на кнопку продолжить
+                        game.set_values()
                         return True
-                    if WIDTH // 2 - 80 < x < WIDTH // 2 + 70 and 400 < y < 445:  # нажатие на кнопку выхода
+                    if start.rect.left < x < start.rect.right and\
+                            start.rect.top < y < start.rect.bottom:  # нажатие на кнопку старт
+                        return True
+                    if exit_game.rect.left < x < exit_game.rect.right and\
+                            exit_game.rect.top < y < exit_game.rect.bottom:  # нажатие на кнопку выхода
                         running = False
                     if WIDTH - 100 < x < WIDTH - 70 and 20 < y < 45:  # остановки и воспроизведение музыки
                         if not SOUND_PAUSE:
@@ -982,10 +1017,15 @@ def game_cycle():
                         pygame.mixer.music.play(-1)
                         if SOUND_PAUSE:
                             pygame.mixer.music.pause()
-
-        start.get_cords(200)
-        options.get_cords(320)
-        exit_game.get_cords(400)
+        if values_continue_game != ['None']:
+            continue_menu.get_cords(190)
+            start.get_cords(310)
+            options.get_cords(430)
+            exit_game.get_cords(510)
+        else:
+            start.get_cords(200)
+            options.get_cords(320)
+            exit_game.get_cords(400)
 
         music_sound.get_cords(20)
         right_pleer.get_cords(20)
@@ -1032,6 +1072,7 @@ def options_menu(x, y, click):
             if not ENGLISH:
                 RUSSIA = False
                 ENGLISH = True
+                continue_menu.rename('Continue_english.png')
                 start.rename("START_ENGLISH.png", )
                 options.rename("OPTIONS_ENGLISH.png")
                 exit_game.rename("EXIT_ENGLISH.png")
@@ -1053,6 +1094,7 @@ def options_menu(x, y, click):
             else:
                 RUSSIA = True
                 ENGLISH = False
+                continue_menu.rename('Continue_russia.png')
                 start.rename("START_RUSSIA.png")
                 options.rename("OPTIONS_RUSSIA.png")
                 exit_game.rename("EXIT_RUSSIA.png")
@@ -1175,6 +1217,7 @@ if __name__ == '__main__':
     coins_sprites, invisible_sprites = pygame.sprite.Group(), pygame.sprite.Group()
     game_over_sprite = pygame.sprite.Group()
     GameOver()
+    values_continue_game = ['None']
     hp_enemy, hit_enemy = [], []
     player = Player()
     for _ in range(5):
@@ -1196,6 +1239,7 @@ if __name__ == '__main__':
     cur = Cur()
 
     # меню
+    continue_menu = MainMenu("Continue_russia.png", WIDTH // 2 - 160, -700, 320, 110, 'load_image')
     start = MainMenu("START_RUSSIA.png", WIDTH // 2 - 150, -500, 300, 100)  # кнопка Старт(Start)
     options = MainMenu("OPTIONS_RUSSIA.png", WIDTH // 2 - 125, -300, 250, 70)  # кнопка Настройки(Options)
     exit_game = MainMenu("EXIT_RUSSIA.png", WIDTH // 2 - 75, -100, 150, 50)  # кнопка Выход(Exit)
