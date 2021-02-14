@@ -3,8 +3,9 @@ import os
 import random
 from Levels import get_level
 
-keys_sl = {'run': [pygame.K_a, pygame.K_d], 'jump': pygame.K_SPACE, 'attack': pygame.K_k, 'pay': pygame.K_e}
-language = {'RUSSIA': ['Счёт', 'Зелье', 'Цена', 'Купить'], 'ENGLISH': ['Account', 'Potion', 'Price', 'Pay']}
+keys_sl = {'run': [pygame.K_a, pygame.K_d], 'jump': pygame.K_SPACE, 'attack': pygame.K_j, 'pay': pygame.K_e}
+language = {'RUSSIA': ['Счёт', 'Зелье', 'Цена', 'Купить', 'Музыка', 'Рекорд'],
+            'ENGLISH': ['Account', 'Potion', 'Price', 'Pay', 'Music', 'Record']}
 
 WIDTH, HEIGHT = 1270, 720
 FPS = 60
@@ -14,6 +15,7 @@ pygame.mixer.init()
 
 
 music_pleer = ['Музыка 1', 'Музыка 2', 'Музыка 3', 'Музыка 4']
+music_pleer_eng = ['Music 1', 'Music 2', 'Music 3', 'Music 4']
 MUSICSOUND = 0
 
 pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
@@ -822,7 +824,7 @@ class Cur(pygame.sprite.Sprite):
 class MainMenu(pygame.sprite.Sprite):
     def __init__(self, name_file, coord_x, coord_y, size_x, size_y, load_im='load_image_menu'):
         super().__init__(all_sprites_main_menu)
-
+        self.load_im = load_im
         if load_im == 'load_image_menu':  # загружает спрайт
             self.image = load_image_menu(name_file)
         else:
@@ -842,7 +844,10 @@ class MainMenu(pygame.sprite.Sprite):
         self.rect.y = coord_y
 
     def rename(self, name):
-        self.image = load_image_menu(name)
+        if self.load_im == 'load_image_menu':
+            self.image = load_image_menu(name)
+        else:
+            self.image = load_image(name, (35, 90, 115))
         self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
 
 
@@ -948,7 +953,7 @@ def load_image_menu(name, color_key=None):
 
 
 def game_cycle():
-    global SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND, image1, values_continue_game
+    global SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND, image1, values_continue_game, language
     image11 = pygame.transform.scale(image1, (1280, 750))
     try:
         with open('save.txt') as f:  # чтение сохранений
@@ -956,10 +961,12 @@ def game_cycle():
     except FileNotFoundError:
         values_continue_game = ['None']
     running, draw_sprite = True, False
-    continue_menu.set_coord_y(-700)
+
+    continue_menu.set_coord_y(-700)  # Возвращение кнопок за экран
     start.set_coord_y(-500)
     options.set_coord_y(-300)
     exit_game.set_coord_y(-100)
+
     background_options = False
     while running:
         for event in pygame.event.get():
@@ -1004,7 +1011,6 @@ def game_cycle():
                         if MUSICSOUND == 4:
                             MUSICSOUND = 0
                         pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
-                        ACTUAL_SOUND = music_pleer[MUSICSOUND]
                         pygame.mixer.music.play(-1)
                         if SOUND_PAUSE:
                             pygame.mixer.music.pause()
@@ -1012,7 +1018,6 @@ def game_cycle():
                         MUSICSOUND -= 1
                         if MUSICSOUND == -1:
                             MUSICSOUND = 3
-                        ACTUAL_SOUND = music_pleer[MUSICSOUND]
                         pygame.mixer.music.load('{}.mp3'.format(music_pleer[MUSICSOUND]))
                         pygame.mixer.music.play(-1)
                         if SOUND_PAUSE:
@@ -1034,21 +1039,29 @@ def game_cycle():
 
         game.screen.blit(image11, (0, 0))
         all_sprites_main_menu.draw(game.screen)
+        if ENGLISH:
+            ACTUAL_SOUND = music_pleer_eng[MUSICSOUND]
+        else:
+            ACTUAL_SOUND = music_pleer[MUSICSOUND]
         font = pygame.font.Font(None, 25)
         text = font.render(ACTUAL_SOUND.upper(), True, (255, 255, 255))
         game.screen.blit(text, (1050, 25))
 
         with open('Рекорд.txt') as f:
-            record_number = f.read()
+            record_number = f.read().split()
+        if int(record_number[1]) // 60 >= 10:
+            record_number[1] = f'{int(record_number[1]) // 60 // 60}:{int(record_number[1]) // 60 % 60}'
+        else:
+            record_number[1] = f'{int(record_number[1]) // 60 // 60}:0{int(record_number[1]) // 60}'
 
-        width_record = WIDTH // 2 - 100
+        width_record = WIDTH // 2 - 110
 
         font_record = pygame.font.Font(None, 40)
-        text_record = font_record.render('Рекорд:', True, (255, 255, 255))
+        text_record = font_record.render(f"{language['RUSSIA' if RUSSIA else 'ENGLISH'][5]}:", True, (255, 255, 255))
         game.screen.blit(text_record, (width_record, 170))
 
         font_record_number = pygame.font.Font(None, 40)
-        text_record_number = font_record_number.render(record_number, True, (255, 255, 255))
+        text_record_number = font_record_number.render(' '.join(record_number), True, (255, 255, 255))
         game.screen.blit(text_record_number, (width_record + 120, 170))
 
         all_Background_options.draw(game.screen)
