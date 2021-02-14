@@ -40,7 +40,7 @@ class Game:
     def __init__(self):
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.bg = load_image('background.jpg')
-        self.coins, self.account, self.time = 0, 1000, 0
+        self.coins, self.account, self.time = 0, 0, 0
         self.wave, self.timers = 1, [0, 0]
         self.enemy, self.break_game = 6, [False, 0]
         self.running, self.pause, self.options, self.mini_menu = True, False, False, False
@@ -339,7 +339,7 @@ class Player(Character):
         super().__init__('Player.png', ('Player_run.png', (6, 1)), ('Player_attack.png', (4, 3)),
                          ('Player_rip.png', (6, 1)))
         self.rect.center = WIDTH // 2, HEIGHT // 2
-        self.hp, self.direction = 10, 'right'
+        self.hp, self.direction = 1000, 'right'
 
     def update(self):
         if self.hp > 0:
