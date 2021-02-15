@@ -25,6 +25,8 @@ pygame.mixer.music.play(-1)
 
 SOUND_PAUSE = False
 
+RULES = False
+
 RUSSIA = True
 ENGLISH = False
 
@@ -169,6 +171,7 @@ class Game:
                 self.pause = False
         options_animation(self.options)
         all_Background_options.draw(game.screen)
+        rules()
         if pygame.mouse.get_pos()[0] < 500 and pygame.mouse.get_pos()[1] < 150:
             all_cur.draw(self.screen)
         elif self.pause:
@@ -888,6 +891,9 @@ class OptionsBackground(pygame.sprite.Sprite):  # настройки
         if self.rect.x < last_x:
             self.rect.x += 40
 
+    def vision(self, y):
+        self.rect.y = y
+
     def rename(self, name):
         self.image = load_image_menu(name)
         self.image = pygame.transform.scale(self.image, (self.size_x, self.size_y))
@@ -1050,6 +1056,7 @@ def game_cycle():
         game.screen.blit(text, (1050, 25))
 
         with open('Рекорд.txt') as f:
+
             record_number = f.read()
 
         width_record = WIDTH // 2 - 110
@@ -1065,95 +1072,110 @@ def game_cycle():
         all_Background_options.draw(game.screen)
 
         options_animation(background_options)
+        rules()
 
         if draw_sprite:
             all_cur.draw(game.screen)
+
         pygame.time.Clock().tick(60)
         pygame.display.flip()
 
 
 def options_menu(x, y, click):
-    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, MUSICSOUND, ACTUAL_SOUND
+    global RUSSIA, ENGLISH, HIT_J, HIT_K, HIT_L, ARROWS, WASD, SOUND_PAUSE, background_options, RULES
     if click:
         if 0 < x < 45 and HEIGHT - 55 < y < HEIGHT:  # закрытие настроек
+            RULES = False
             return False
 
-        if (WIDTH // 4 + WIDTH // 4 + 150 < x < WIDTH // 4 + WIDTH // 4 + 180 and 120 < y < 145) or \
-                (WIDTH // 4 + WIDTH // 4 - 15 < x < WIDTH // 4 + WIDTH // 4 + 10 and 120 < y < 145):  # язык
-            if not ENGLISH:
-                RUSSIA = False
-                ENGLISH = True
-                continue_menu.rename('Continue_english.png')
-                start.rename("START_ENGLISH.png", )
-                options.rename("OPTIONS_ENGLISH.png")
-                exit_game.rename("EXIT_ENGLISH.png")
+        if not RULES and WIDTH // 4 + WIDTH // 4 - 20 < x < WIDTH // 4 + WIDTH // 4 + 180 and\
+                180 < y < 230:
+            RULES = True
+        else:
+            RULES = False
+        if not RULES:
+            if (WIDTH // 4 + WIDTH // 4 + 150 < x < WIDTH // 4 + WIDTH // 4 + 180 and
+                120 < y < 145) or (WIDTH // 4 + WIDTH // 4 - 15 < x < WIDTH // 4 + WIDTH // 4 + 10 and
+                                   120 < y < 145):  # язык
+                if not ENGLISH:
+                    RUSSIA = False
+                    ENGLISH = True
+                    continue_menu.rename('Continue_english.png')
+                    start.rename("START_ENGLISH.png", )
+                    options.rename("OPTIONS_ENGLISH.png")
+                    exit_game.rename("EXIT_ENGLISH.png")
 
-                optinons_control.rename("CONTROL_ENGLISH.png")
+                    optinons_control.rename("CONTROL_ENGLISH.png")
 
-                options_JUMP.rename("JUMP_ENGLISH.png")
+                    options_JUMP.rename("JUMP_ENGLISH.png")
 
-                options_hit.rename("HIT_ENGLISH.png")
+                    options_hit.rename("HIT_ENGLISH.png")
 
-                option_languages.rename("LANGUAGES_ENGLISH.png")
-                languages_sprite.rename("LANG_ENGLISH.png")
+                    option_languages.rename("LANGUAGES_ENGLISH.png")
+                    languages_sprite.rename("LANG_ENGLISH.png")
 
-                back_main.rename("BACK_ENGLISH.png")
+                    back_main.rename("BACK_ENGLISH.png")
 
-                continue_btn.rename('Continue_english.png')
-                exit_menu.rename('exit_menu_english.png')
-                exit_game_mm.rename('exit_game_english.png')
-            else:
-                RUSSIA = True
-                ENGLISH = False
-                continue_menu.rename('Continue_russia.png')
-                start.rename("START_RUSSIA.png")
-                options.rename("OPTIONS_RUSSIA.png")
-                exit_game.rename("EXIT_RUSSIA.png")
+                    continue_btn.rename('Continue_english.png')
+                    exit_menu.rename('exit_menu_english.png')
+                    exit_game_mm.rename('exit_game_english.png')
 
-                optinons_control.rename("CONTROL_RUSSIA.png")
+                    option_rules.rename('RULES_ENGLISH.png')
+                else:
+                    RUSSIA = True
+                    ENGLISH = False
+                    continue_menu.rename('Continue_russia.png')
+                    start.rename("START_RUSSIA.png")
+                    options.rename("OPTIONS_RUSSIA.png")
+                    exit_game.rename("EXIT_RUSSIA.png")
 
-                options_JUMP.rename("JUMP_RUSSIA.png")
+                    optinons_control.rename("CONTROL_RUSSIA.png")
 
-                options_hit.rename("HIT_RUSSIA.png")
+                    options_JUMP.rename("JUMP_RUSSIA.png")
 
-                option_languages.rename("LANGUAGES_RUSSIA.png")
-                languages_sprite.rename("LANG_RUSSIA.png")
+                    options_hit.rename("HIT_RUSSIA.png")
 
-                back_main.rename("BACK_RUSSIA.png")
+                    option_languages.rename("LANGUAGES_RUSSIA.png")
+                    languages_sprite.rename("LANG_RUSSIA.png")
 
-                continue_btn.rename('Continue_russia.png')
-                exit_menu.rename('exit_menu_russia.png')
-                exit_game_mm.rename('exit_game_russia.png')
-        if (WIDTH // 4 + 120 < x < WIDTH // 4 + 155 and 375 < y < 400) or \
-                (WIDTH // 4 + 20 < x < WIDTH // 4 + 45 and 375 < y < 400):  # смена кнопки удара
-            if HIT_J:
-                HIT_J = False
-                HIT_K = True
-                keys_sl['attack'] = pygame.K_k
-                hit_button.rename("HIT_K.png")
+                    back_main.rename("BACK_RUSSIA.png")
 
-            elif HIT_K:
-                HIT_K = False
-                HIT_L = True
-                keys_sl['attack'] = pygame.K_l
-                hit_button.rename("HIT_L.png")
-            elif HIT_L:
-                HIT_L = False
-                HIT_J = True
-                keys_sl['attack'] = pygame.K_j
-                hit_button.rename("HIT_J.png")
-        if (WIDTH // 4 + 160 < x < WIDTH // 4 + 190 and 120 < y < 145) or \
-                (WIDTH // 4 - 25 < x < WIDTH // 4 + 5 and 120 < y < 145):  # смена управления
-            if ARROWS:
-                ARROWS = False
-                WASD = True
-                keys_sl['run'] = [pygame.K_a, pygame.K_d]
-                options_control_arrows.rename("WASD.png")
-            elif WASD:
-                ARROWS = True
-                WASD = False
-                keys_sl['run'] = [pygame.K_LEFT, pygame.K_RIGHT]
-                options_control_arrows.rename("ARROWS.png")
+                    continue_btn.rename('Continue_russia.png')
+                    exit_menu.rename('exit_menu_russia.png')
+                    exit_game_mm.rename('exit_game_russia.png')
+
+                    option_rules.rename('RULES_RUSSIA.png')
+            if (WIDTH // 4 + 120 < x < WIDTH // 4 + 155 and 375 < y < 400) or \
+                    (WIDTH // 4 + 20 < x < WIDTH // 4 + 45 and 375 < y < 400):  # смена кнопки удара
+                if HIT_J:
+                    HIT_J = False
+                    HIT_K = True
+                    keys_sl['attack'] = pygame.K_k
+                    hit_button.rename("HIT_K.png")
+
+                elif HIT_K:
+                    HIT_K = False
+                    HIT_L = True
+                    keys_sl['attack'] = pygame.K_l
+                    hit_button.rename("HIT_L.png")
+                elif HIT_L:
+                    HIT_L = False
+                    HIT_J = True
+                    keys_sl['attack'] = pygame.K_j
+                    hit_button.rename("HIT_J.png")
+            if (WIDTH // 4 + 160 < x < WIDTH // 4 + 190 and 120 < y < 145) or \
+                    (WIDTH // 4 - 25 < x < WIDTH // 4 + 5 and 120 < y < 145):  # смена управления
+                if ARROWS:
+                    ARROWS = False
+                    WASD = True
+                    keys_sl['run'] = [pygame.K_a, pygame.K_d]
+                    options_control_arrows.rename("WASD.png")
+                elif WASD:
+                    ARROWS = True
+                    WASD = False
+                    keys_sl['run'] = [pygame.K_LEFT, pygame.K_RIGHT]
+                    options_control_arrows.rename("ARROWS.png")
+
     return True
 
 
@@ -1180,6 +1202,9 @@ def options_animation(tf):
         language_right.get_left(WIDTH // 4 + WIDTH // 4 + 160)
         language_left.get_left(WIDTH // 4 + WIDTH // 4)
         back_main.get_left(0)
+
+        option_rules.get_left(WIDTH // 4 + WIDTH // 4)
+
     else:  # закрытие настроек
         background_fon.get_right(WIDTH)
 
@@ -1202,6 +1227,17 @@ def options_animation(tf):
         language_left.get_right(WIDTH + WIDTH // 4)
         back_main.get_right(WIDTH)
 
+        option_rules.get_right(WIDTH + WIDTH // 4 + WIDTH // 4)
+
+        if RULES:
+            svit_text.vision(50)
+            svit.vision(0)
+            svit_2.vision(680)
+        else:
+            svit_text.vision(-1000)
+            svit.vision(-1000)
+            svit_2.vision(-1000)
+
 
 def mini_menu(x, y, click):
     if continue_btn.rect.left < x < continue_btn.rect.right and\
@@ -1218,6 +1254,90 @@ def mini_menu(x, y, click):
         game.save_game()
         return False
     return True
+
+
+def rules():
+    global RULES
+    if RULES:
+        svit_text.vision(50)
+        svit.vision(0)
+        svit_2.vision(680)
+        text_russia = ['Цель  игры: набрать как можно',
+                       'больше очков, наименьшее коли',
+                       'чество времени.',
+                       'Счёт: очки заработанные путём',
+                       'убийства врагов.',
+                       'Враги: появляются с началом ',
+                       'каждой волны(волна не закан',
+                       'чивается ',
+                       'пока игрок не убьет всех ',
+                       'врагов, промежуток между ',
+                       'волнами 7 секунд), за их ',
+                       'убийство дается от 3 до 7 ',
+                       'монет(количество опре',
+                       'деляется рандомно).',
+                       'Игровая валюта: монеты, ',
+                       'предназначающиеся для покупки ',
+                       'зелья восстановления здоровья',
+                       '(восстанавливает от 200 до 500 ',
+                       'очков), цена: 24 монеты.',
+                       'Рекорд: рекорд показывается в',
+                       'главном меню в 2 числа: ',
+                       '1 число – счёт очков за убийство',
+                       'врага, 2 число – время',
+                       'жизни игрока.',
+                       'Конец игры: игра заканчивается, ',
+                       'как только игрок умирает.']
+
+        text_english = ['The goal of the game is to',
+                        'score as many points as possible',
+                        'in the least amount of time.',
+                        'Score: Points earned by',
+                        'killing enemies. ',
+                        'Enemies: appearing at the start',
+                        'of each wave(wave does not end ',
+                        'until the player doesnt kill ',
+                        'all the enemies, the interval',
+                        'between waves 7 seconds), for ',
+                        'their murder is from 3 to 7 ',
+                        'coins (the amount is determined',
+                        ' randomly).',
+                        'Game currency: coins, used to ',
+                        'purchase potions restore health',
+                        '(restores from 200 to 500 points),',
+                        'price: 24 coins.',
+                        'Highscore: The highscore is shown ',
+                        'in the main menu at 2 numbers:',
+                        '1 number – score points for ',
+                        'killing an enemy, 2 number – ',
+                        'the players life time. ',
+                        'End of Game: The game ends ',
+                        'as soon as the player dies.']
+
+        font = pygame.font.Font(None, 16)
+        text_coord = 100
+        if RUSSIA:
+            for line in text_russia:
+                string_rendered = font.render(line, True, pygame.Color('black'))
+                intro_rect = string_rendered.get_rect()
+                text_coord += 10
+                intro_rect.top = text_coord
+                intro_rect.x = WIDTH // 2 - 90
+                text_coord += intro_rect.height
+                game.screen.blit(string_rendered, intro_rect)
+        else:
+            for line in text_english:
+                string_rendered = font.render(line, True, pygame.Color('black'))
+                intro_rect = string_rendered.get_rect()
+                text_coord += 10
+                intro_rect.top = text_coord
+                intro_rect.x = WIDTH // 2 - 90
+                text_coord += intro_rect.height
+                game.screen.blit(string_rendered, intro_rect)
+    else:
+        svit_text.vision(-1000)
+        svit.vision(-1000)
+        svit_2.vision(-1000)
 
 
 if __name__ == '__main__':
@@ -1292,9 +1412,16 @@ if __name__ == '__main__':
     language_right = OptionsBackground("arrow_right.png", WIDTH + WIDTH // 4 + WIDTH // 4 + 50, 120, 25, 25)
     language_left = OptionsBackground("arrow_left.png", WIDTH + WIDTH // 4 + WIDTH // 4, 120, 25, 25)
 
+    # правила
+    option_rules = OptionsBackground("RULES_RUSSIA.png", WIDTH + WIDTH // 4 + WIDTH // 4, 180, 200, 50)
+
     # возвращение в главное меню
     back_main = OptionsBackground("BACK_RUSSIA.png", WIDTH + 50, HEIGHT - 55, 50, 25)
     pygame.mouse.set_visible(False)  # скрывает курсор
+
+    svit_text = OptionsBackground('svitok_text.png', WIDTH // 2 - 190, -1110, 380, 670)
+    svit = OptionsBackground('svitok.png', WIDTH // 2 - 250, -100, 500, 50)
+    svit_2 = OptionsBackground('svitok.png', WIDTH // 2 - 250, -460, 500, 50)
 
     while game.running and game_cycle():
         game.game_run()
